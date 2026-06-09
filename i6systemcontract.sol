@@ -331,7 +331,7 @@ contract InfinitySixSystem is Ownable, ReentrancyGuard {
         }));
 
         usdt.safeTransferFrom(msg.sender, address(this), usdtAmount);
-        _updateDownlineBusiness(msg.sender, usdtAmount);
+        _updateD ulineBusiness(msg.sender, usdtAmount);
 
         if (user.referrer != address(0)) {
             _realizePendingDirectBonus(user.referrer);

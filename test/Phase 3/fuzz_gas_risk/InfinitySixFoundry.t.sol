@@ -3,7 +3,7 @@ pragma solidity ^0.8.34;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/InfinitySix.sol";
+import "../../../src/InfinitySix.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // ── Mock USDT ─────────────────────────────────────────────────────────────────

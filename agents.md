@@ -1,0 +1,1 @@
+Whatever test you perform, you need to first take the smart conmtract to the current mainnet values which are mentioned in the i6systemcontract-values.md and i6-token-values.md files
