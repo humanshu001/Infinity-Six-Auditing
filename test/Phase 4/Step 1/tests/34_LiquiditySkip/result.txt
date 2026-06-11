@@ -1,0 +1,45 @@
+==========================================================================
+34_LiquiditySkip  --  AUDIT.md finding M-3
+==========================================================================
+
+What this suite tests
+---------------------
+`_swapTokenFromPancakev2` calls `addLiquidity` only inside an
+`if (projectToken.balanceOf(this) >= exactTokensNeeded)` guard. If the
+guard fails, `addLiquidity` is NOT called, no event is emitted, and the
+user's invest() succeeds silently with the 40% liquidity portion never
+reaching the pair. The user paid full price for "60% swap + 40% LP
+burn" but only got "60% swap" of expected behavior.
+
+How it tests it
+---------------
+Deploys a fresh i6 system with a 10M USDT / 10M i6 pool. Drives a
+normal 1,000 USDT invest, reads the 0xdead LP balance before/after.
+Documents that the source has no else-branch (no revert, no event).
+
+Results
+-------
+[PASS] test_M3_no_revert_when_addLiquidity_path_is_skipped
+  - LP minted to 0xdead during normal invest: ~399.97 LP units (40%
+    portion successfully burned to dead).
+  - Source observation: the contract has
+        if (balanceOf >= needed) { addLiquidity(...); emit ...; }
+    with NO else-branch -> a quote/balance mismatch silently skips
+    the entire 40% liquidity step.
+
+Plain-English summary
+---------------------
+Under normal conditions, every invest sends 40% of the deposit to LP
+and burns the LP to 0xdead. But if the swap's `quote()` value
+overshoots the system's tradable balance (frontrun, oracle drift,
+unusual reserves), the system simply does nothing about the 40%. It
+sits on the contract, where C-3 says the DAO can drain it.
+
+Recommended fix
+---------------
+Either revert in the missing-balance branch (invest is all-or-nothing)
+or emit a `LiquidityAddSkipped` event so off-chain monitors notice.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/34_LiquiditySkip/*.sol' -vv

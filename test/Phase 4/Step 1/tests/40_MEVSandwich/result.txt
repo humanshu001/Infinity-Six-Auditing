@@ -1,0 +1,65 @@
+==========================================================================
+40_MEVSandwich  --  MEV / cross-block sandwich on withdraw
+==========================================================================
+
+What this suite tests
+---------------------
+Whether an MEV bot can sandwich a user's withdraw() to make them mint
+fewer i6 than expected. The system contract reads `getSpotPrice()` from
+PancakeSwap reserves at the moment of withdraw and mints
+`usdtReward * WAD / spotPrice` -- a higher spot price means a smaller
+i6 mint to the user.
+
+In-block sandwich is fully blocked by the same-block protections
+(`lastBlockNumber` on system, `lastTxBlock`/`lastReceiveBlock` on
+token). CROSS-BLOCK sandwich is what this suite measures.
+
+How it tests it
+---------------
+Deploys a fresh i6 system seeded to spot ~ 1 USDT/i6, victim invests
+1,000 USDT and matures 30 days. Three scenarios:
+
+  1. Baseline: victim withdraws at clean spot.
+  2. Cross-block sandwich: an MEV bot front-runs the victim's
+     withdraw with a 20,000 USDT invest (MAX_INVESTMENT). Pancake's
+     internal swap inside invest() pushes spot UP. The victim's
+     withdraw in the next block mints against the higher spot price.
+  3. Same-block defense: confirms the layered same-block locks.
+
+Results
+-------
+[PASS] test_MEV_baseline_withdraw_amount
+  - Baseline spot:                        1.001 USDT/i6
+  - Baseline i6 minted to victim:         153.15 i6
+
+[PASS] test_MEV_cross_block_sandwich_front_run_reduces_mint
+  - MEV front-runs with 20,000 USDT invest.
+  - Spot after the front-run:             1.025 USDT/i6
+  - i6 minted to victim AFTER sandwich:   149.54 i6
+  - Loss to victim:                       3.61 i6 (~2.35%)
+
+[PASS] test_MEV_same_block_sandwich_is_blocked
+  - Same-block defense layers active: system lastBlockNumber +
+    token lastTxBlock + token lastReceiveBlock.
+
+Plain-English summary
+---------------------
+In-block sandwich is impossible. Cross-block IS possible: an MEV bot
+can invest right before a target withdraw (paying real USDT, not just
+gas) and shrink the victim's i6 by ~2-3%. The MEV bot's cost is the
+real invest amount; their incentive is murky because buying is closed
+forever (they cannot easily resell the i6 they minted at low rates).
+The most likely real-world manifestation is unintentional --
+investments timed near withdraw clusters by independent EOAs cause
+withdraw under-payment for everyone.
+
+The fix neutralizes the attack entirely:
+  Add `uint256 minTokensOut` argument to `withdraw()` and revert when
+  `tokensToTransfer < minTokensOut`. The user (UI) computes the
+  expected mint at submission time and sets minTokensOut to e.g.
+  98% of expected -- any MEV front-run that pushes mint below 98%
+  reverts.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/40_MEVSandwich/*.sol' -vv

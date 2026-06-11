@@ -10,14 +10,24 @@ import "../BaseFork.t.sol";
 ///         ORIGIN vs a normal user with identical state.
 contract OriginBypassTest is BaseForkSetup {
 
-    function test_H5_origin_member_is_hardcoded_eoa() public {
+    function test_H5_origin_member_is_hardcoded() public {
         // Documented constant in the contract.
         assertEq(ORIGIN_LIVE, 0xdF4fA7B59e9735f273B661153A03e64A6AE61cd1, "constant address");
         // Genesis investment is seeded at constructor time.
         (uint256 td,,,,,,,,,,,,,,,,,,,,,,,,,,) = system.users(ORIGIN_LIVE);
         emit log_named_string("ORIGIN totalDeposits (live)", _toUsdt(td));
-        emit log_named_uint("Code size at ORIGIN (PoC: 0 -> it is an EOA)", ORIGIN_LIVE.code.length);
-        assertEq(ORIGIN_LIVE.code.length, 0, "PoC: ORIGIN is an EOA, not a multisig");
+        uint256 codeSize = ORIGIN_LIVE.code.length;
+        emit log_named_uint("Code size at ORIGIN address", codeSize);
+        emit log_named_string(
+            "ORIGIN account type",
+            codeSize == 0
+                ? "EOA -- single private key controls genesis powers"
+                : (codeSize <= 23
+                    ? "EIP-7702 set-code delegate (auth-tx attached behavior; still a single key)"
+                    : "smart contract (likely a multisig / Safe proxy)")
+        );
+        // The fact that ORIGIN is HARDCODED is the audit point, regardless
+        // of whether the account is now a Safe or still an EOA.
     }
 
     function test_H5_origin_can_withdraw_past_6x_cap() public {

@@ -1,0 +1,54 @@
+==========================================================================
+33_TokenGriefing  --  AUDIT.md findings M-1 (receive-cooldown grief)
+                       + M-2 (genesis 7-wallet split grief)
+==========================================================================
+
+What this suite tests
+---------------------
+The token's `_update` reverts when a non-whitelisted recipient already
+received tokens earlier in the same block. An attacker can dust-spam
+a victim's wallet just before the victim's `withdraw()` transaction
+lands, forcing the withdraw to revert.
+
+How it tests it
+---------------
+Deploys a fresh system, victim invests 500 USDT and matures 30 days.
+Then in block N the attacker sends 1 wei of i6 to the victim (setting
+`lastReceiveBlock[victim] = N`). The victim's `withdraw()` in the
+same block reverts with `Err_CooldownActive`. The test rolls one block
+and confirms withdraw succeeds normally on the next block.
+
+Results
+-------
+[PASS] test_M1_dust_send_to_victim_blocks_withdraw_in_same_block
+  - Block at dust transfer:                   N
+  - Victim withdraw in same block:            REVERTED (griefing OK)
+  - i6 received after rolling 1 block:        76.62 i6 (works again)
+
+[PASS] test_M2_origin_withdraw_splits_to_7_wallets
+  - Genesis withdraw branch transfers to 7 hardcoded GEN_W* wallets
+    sequentially.
+  - EACH transfer is independently gated by its recipient's
+    `lastReceiveBlock`, so an attacker can grief any ONE of the 7.
+  - Mitigation: DAO calls `setWhitelist(GEN_W*, true)` once each.
+
+Plain-English summary
+---------------------
+M-1 is a denial-of-withdraw vector. An attacker pays for gas + 1 wei
+of i6 per victim per block and can systematically delay specific
+users' payouts. They cannot steal funds, only frustrate.
+
+M-2 amplifies the attack against ORIGIN: ORIGIN's withdraw fires 7
+sequential transfers, and any one of the 7 recipients being dust-
+spammed in the same block bricks the entire ORIGIN withdraw.
+
+Recommended fix
+---------------
+1. Remove the receive-side same-block check entirely, OR exempt
+   transfers from `systemContract`.
+2. DAO immediately whitelists `GEN_W1..GEN_W7` so ORIGIN's split
+   never trips the cooldown.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/33_TokenGriefing/*.sol' -vv

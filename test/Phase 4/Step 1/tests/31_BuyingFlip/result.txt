@@ -1,0 +1,55 @@
+==========================================================================
+31_BuyingFlip  --  AUDIT.md finding H-4
+==========================================================================
+
+What this suite tests
+---------------------
+The token's `enableBuying()` is gated by a 180-day lock from `deployTime`
+but is otherwise reversible -- the DAO can call `disableBuying()` and
+`enableBuying()` freely. The agents.md policy of "buying disabled
+forever" rests entirely on DAO honesty.
+
+How it tests it
+---------------
+Reads the live state (`buyingEnabled == false`, `timeUntilBuyUnlock`
+~ 11M seconds remaining at fork time). Warps past the 180-day unlock
+window, calls `enableBuying()` as DAO, then `disableBuying()`, then
+`enableBuying()` again. Confirms each flip persists. Also probes the
+ABI for any `lockBuyingForever()` function.
+
+Results
+-------
+[PASS] test_H4_buyingEnabled_currently_false_but_unlock_pending
+  - `buyingEnabled == false` at fork block
+  - `timeUntilBuyUnlock` ~ 10,633,134 seconds (~123 days)
+
+[PASS] test_H4_dao_can_enable_then_disable_then_re_enable
+  - enable -> OK
+  - disable -> OK
+  - enable -> OK (3 flips all succeeded)
+
+[PASS] test_H4_no_lock_buying_forever_function_exists
+  - No `lockBuyingForever()` selector exists.
+
+Plain-English summary
+---------------------
+The user's notes (agents.md) state "buying is permanently closed". On
+chain, only a 180-day delay prevents enabling, and the DAO can re-
+enable at any time afterward. If the DAO key is compromised or the
+operator ever changes their mind, anyone can buy from the LP. Because
+the LP tokens are locked at 0xdead, the only `i6` people could buy is
+what withdrawers dump -- but that pipeline is what makes the death
+spiral worse.
+
+Recommended fix
+---------------
+If buying-forever-off is a hard guarantee:
+  1. Remove `enableBuying()` entirely, OR
+  2. Add an immutable one-shot `lockBuyingForever()` that, once
+     called, makes `enableBuying()` revert permanently.
+
+Document either choice in the user-facing whitepaper.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/31_BuyingFlip/*.sol' -vv

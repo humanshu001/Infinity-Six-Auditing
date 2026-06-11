@@ -1,0 +1,49 @@
+==========================================================================
+24_RescueDrain  --  AUDIT.md finding C-3
+==========================================================================
+
+What this suite tests
+---------------------
+Whether the DAO multisig can quietly drain investor-deposited USDT from
+the live `InfinitySixSystem` contract by calling `rescueAccidentalTokens`.
+
+How it tests it
+---------------
+Forks BSC mainnet (via BaseFork.t.sol), reads the live
+`DAOMultisigController` (0x4EA9...32f, exactly the value documented in
+i6systemcontract-values.md), then pranks as that DAO. If the live system
+contract happens to hold no USDT at the forked block, the test simulates
+the realistic case by depositing 1,000 USDT into the live system's
+balance using `deal` and then drains it.
+
+Results
+-------
+[PASS] test_C3_dao_can_drain_user_usdt_from_live_system
+  - System USDT float at forked block:  0.000 USDT
+  - Float seeded for the PoC:           1,000.000 USDT
+  - USDT moved out to attacker:         1,000.000 USDT
+  - System balance after drain:         0
+
+[PASS] test_C3_project_token_rescue_still_blocked
+  - DAO call rescuing `projectToken` reverts with
+    `Err_CannotDrainRewardTokens` -- the existing guard for the i6 token
+    itself still holds. USDT (and any other ERC20) has no such guard.
+
+Plain-English summary
+---------------------
+The "rescue accidental tokens" function on the live contract has a check
+that blocks the i6 token, but NOT USDT. The DAO multisig can call it any
+time, with no time-lock, and instantly transfer the entire in-flight
+investor-deposit USDT float to an arbitrary address. If the DAO key is
+ever compromised, this is a one-call rug of investor deposits.
+
+Recommended fix
+---------------
+Also block USDT (and ideally any token the contract is expected to
+custody) inside `rescueAccidentalTokens`. If a non-USDT rescue is ever
+genuinely needed, bound the amount to
+   `IERC20(token).balanceOf(this) - expectedFloat`.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/24_RescueDrain/*.sol' -vv

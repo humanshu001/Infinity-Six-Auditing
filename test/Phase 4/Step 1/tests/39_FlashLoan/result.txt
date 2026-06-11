@@ -1,0 +1,55 @@
+==========================================================================
+39_FlashLoan  --  Flash-loan attack surface
+==========================================================================
+
+What this suite tests
+---------------------
+Whether an attacker can use a PancakeSwap V2 flash loan (pair.swap with
+data) to fund a malicious invest() or withdraw() that manipulates
+price or drains state in one transaction.
+
+How it tests it
+---------------
+1. Deploys a `FlashBorrower` contract that asks the live BSC USDT/i6
+   pair for a flash borrow. The pair invokes `pancakeCall(...)` on
+   the borrower; inside the callback the borrower:
+     a. Approves USDT to the system,
+     b. Calls `system.invest(borrowAmount/2, ORIGIN, 0)`,
+     c. Repays the pair (and observes the K-check).
+   The system's `tx.origin != msg.sender` check should reject (b).
+2. Asserts that without whitelisting, a contract caller cannot transfer
+   i6 either (the token's `_update` enforces tx.origin check when both
+   sides are non-whitelisted).
+
+Results
+-------
+[PASS] test_flash_loan_invest_is_rejected_by_tx_origin_check
+  - The borrower's invest() call REVERTS inside the pancakeCall
+    callback before any state changes.
+  - The outer pair.swap reverts at the K-check because no funds were
+    repaid -- the attacker loses nothing but also extracts nothing.
+  - Tx.origin protection: ABSOLUTE.
+
+[PASS] test_flash_loan_via_token_pair_dump_blocked
+  - `token.isWhitelisted(SYSTEM)` = true
+  - `token.isWhitelisted(attacker)` = false
+  - A contract-to-contract transfer between non-whitelisted parties
+    is rejected by the token's `_update` -> Err_NoContractCallsAllowed.
+
+Plain-English summary
+---------------------
+The `tx.origin == msg.sender` check on `invest()`, `withdraw()`, and
+`claimRank()` is the single line of code that closes the entire
+flash-loan attack surface. A contract -- even one funded by a flash
+loan -- cannot invoke these functions. The token's `_update` extends
+the same protection to token transfers between non-whitelisted
+accounts.
+
+This protection has a real cost (audited multisig wallets like Gnosis
+Safe and EIP-7702 accounts cannot interact with the protocol at all),
+but for the audit threat model "no flash-loan-funded invest/withdraw"
+is enforced.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/39_FlashLoan/*.sol' -vv

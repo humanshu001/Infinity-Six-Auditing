@@ -1,0 +1,48 @@
+==========================================================================
+27_RouterHotSwap  --  AUDIT.md finding C-4
+==========================================================================
+
+What this suite tests
+---------------------
+Whether a compromised DAO can re-point `dexRouter` to a malicious
+contract and skim the 60% USDT swap portion of every subsequent
+invest().
+
+How it tests it
+---------------
+Deploys a fresh i6 token + system on the BSC fork. Drives one baseline
+invest() through the real Pancake router. Then the DAO calls
+`setDexRouter(MaliciousRouter)`. The MaliciousRouter's
+`swapExactTokensForTokens` pulls the approved USDT and forwards it to
+an attacker address. A second invest() routes through the malicious
+router; the attacker's USDT balance is checked.
+
+Results
+-------
+[PASS] test_C4_dao_can_hot_swap_router_and_steal_invest_swap_portion
+  - Real-router invest:                  60% swapped on PancakeSwap.
+  - DAO call setDexRouter(MaliciousRouter): instant, no delay.
+  - 1,000 USDT invest after hot-swap:    600 USDT stolen by attacker.
+    (Exactly 60% of the invest -- the swap portion is fully drained.)
+
+[PASS] test_C4_no_timelock_on_setDexRouter
+  - `pendingDexRouter()` does not exist; there is no two-phase migration.
+
+Plain-English summary
+---------------------
+If the DAO multisig key is ever compromised, the attacker doesn't need
+to drain the current treasury -- they can install a malicious router
+and skim 60% of every USDT deposit forever, until the swap is reverted
+manually. Combined with C-3 (USDT rescue), the DAO has near-total
+power over investor funds.
+
+Recommended fix
+---------------
+Make `setDexRouter` two-phase / time-locked: a `pendingDexRouter` is
+set, an event is emitted, and the change activates only after a delay
+(e.g. 7 days). The same applies to `setTradingPair`. The delay gives
+investors time to withdraw before the router becomes effective.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/27_RouterHotSwap/*.sol' -vv

@@ -1,0 +1,62 @@
+==========================================================================
+32_OriginBypass  --  AUDIT.md finding H-5
+==========================================================================
+
+What this suite tests
+---------------------
+`ORIGIN_MEMBER_ID = 0xdF4fA7B59e9735f273B661153A03e64A6AE61cd1` is a
+hardcoded constant. Every cap-related branch in the contract carries an
+`if (_user == ORIGIN_MEMBER_ID || …)` short-circuit, meaning ORIGIN's
+total lifetime payout is unbounded (no 6x cap) and ORIGIN's
+`pendingDirectBonus` cap-check is bypassed when ORIGIN is the referrer.
+
+How it tests it
+---------------
+1. Confirms the constant address and reads its `totalDeposits` from
+   the LIVE system (50,000 USDT genesis seed) plus the code size to
+   classify the account type (EOA / EIP-7702 / contract).
+2. In a fresh system, advances time a year, calls withdraw() as ORIGIN
+   and re-reads `isCapped`. Asserts ORIGIN remains uncapped.
+3. Probes the ABI for any `setOriginMember()` rotation function.
+
+Results
+-------
+[PASS] test_H5_origin_member_is_hardcoded
+  - ORIGIN totalDeposits (live):  50,000 USDT (genesis seed)
+  - Code size at ORIGIN address:  23  (EIP-7702 set-code delegate)
+  - Interpretation:               The genesis EOA has an EIP-7702
+                                  authorization attached, meaning a
+                                  delegate contract executes code on
+                                  the EOA's behalf -- still controlled
+                                  by a single private key.
+
+[PASS] test_H5_origin_can_withdraw_past_6x_cap
+  - After 1 year + withdraw, ORIGIN.isCapped = false. ORIGIN bypasses
+    the cap branch by design.
+
+[PASS] test_H5_no_setter_to_rotate_origin
+  - No `setOriginMember(address)` selector exists.
+  - The constant is set at deploy and IMMUTABLE.
+
+Plain-English summary
+---------------------
+ORIGIN is the genesis account. The 6x lifetime-payout cap that limits
+every other user does not apply to ORIGIN. If ORIGIN's private key is
+ever compromised, the attacker can call `withdraw()` repeatedly
+forever; each withdraw mints `i6` against the spot price and routes
+the tokens to GEN_W1..GEN_W7. If those payout wallets are also
+attacker-controlled, this is unbounded extraction; if they are
+trusted multisigs, the attacker still bricks the price by minting
+infinite supply.
+
+Recommended fix
+---------------
+1. Replace the EOA / EIP-7702 ORIGIN with a real multisig contract.
+2. Add a DAO-controlled, time-locked `setOriginMember()` so a future
+   key compromise is recoverable.
+3. Cap ORIGIN's withdrawals per-day so a single compromise can't drain
+   the system in one tx.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/32_OriginBypass/*.sol' -vv

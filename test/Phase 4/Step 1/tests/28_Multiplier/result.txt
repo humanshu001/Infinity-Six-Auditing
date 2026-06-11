@@ -1,0 +1,56 @@
+==========================================================================
+28_Multiplier  --  AUDIT.md findings H-1 (multiplier fall-through) + L-1
+                   (setROI range mismatch)
+==========================================================================
+
+What this suite tests
+---------------------
+`_getMultiplier(rate)` is a hardcoded switch with branches for {5,7,8,10}
+and a default branch that returns the 0.5%-daily multiplier (1.005e18).
+`setROI()` accepts any value in [2,10]. Therefore a DAO call like
+`setROI(9)` silently leaves compounding at 0.5% instead of 0.9%.
+
+How it tests it
+---------------
+Deploys a fresh system, invests 1,000 USDT, and reads
+`getTotalLifetimeRWP()` after 30 days under different ROI settings.
+Compares ROI=5 versus ROI=9 -- if the multiplier worked correctly the
+lifetime RWP would differ by ~12%; if both fall through to the default
+they are equal.
+
+Results
+-------
+[PASS] test_H1_documented_rates_compound_correctly
+  - Lifetime RWP after 30d @ ROI=5: 161.40 USDT
+
+[PASS] test_H1_undocumented_rates_silently_fall_to_default
+  - Lifetime RWP after 30d @ ROI=5: 161.40 USDT
+  - Lifetime RWP after 30d @ ROI=9: 161.40 USDT
+  - Bug confirmed: both yield the SAME lifetime RWP -- ROI=9 silently
+    compounds at 0.5%.
+
+[PASS] test_L1_setROI_accepts_values_that_fall_through
+  - setROI(6) accepted (intends 0.6% / actually 0.5%)
+  - setROI(9) accepted (intends 0.9% / actually 0.5%)
+  - setROI(1)  reverts as expected (out of range)
+  - setROI(11) reverts as expected (out of range)
+
+Plain-English summary
+---------------------
+The DAO can change the daily ROI any time. But the math under it only
+handles four specific rate values. Any other "valid" value silently
+falls back to the 0.5% default. If the DAO ever pushes ROI to 6, 9,
+3, or 4, users get HALF the intended ROI, with no on-chain error.
+
+Recommended fix
+---------------
+Replace the switch with arithmetic:
+   function _getMultiplier(uint256 rate) internal pure returns (uint256) {
+       return WAD + (rate * WAD) / 1000;
+   }
+That makes every rate in [2,10] produce the correct compounding factor
+and removes the entire fall-through class of bugs.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/28_Multiplier/*.sol' -vv

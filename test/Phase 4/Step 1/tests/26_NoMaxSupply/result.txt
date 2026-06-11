@@ -1,0 +1,48 @@
+==========================================================================
+26_NoMaxSupply  --  AUDIT.md finding C-2
+==========================================================================
+
+What this suite tests
+---------------------
+Whether the i6 token enforces any ceiling on total supply. The system
+contract is the sole minter (`onlySystem` modifier on `mint`); combined
+with C-1's price-mint amplifier, an unbounded mint means a single
+withdraw against depressed reserves can hyper-inflate the supply.
+
+How it tests it
+---------------
+Runs against the LIVE BSC mainnet i6 token. First test probes the ABI
+for a `MAX_SUPPLY()` getter (expected to be absent). Second test pranks
+as the live `systemContract()` and mints 1 TRILLION i6 in a single
+call.
+
+Results
+-------
+[PASS] test_C2_token_has_no_max_supply_constant
+  - `i6.MAX_SUPPLY()` static call result: function not present
+
+[PASS] test_C2_system_can_mint_arbitrary_amount
+  - Supply before mint:        ~594,389 i6 (live mainnet at fork block)
+  - Supply after  mint:        ~1,000,000,594,389 i6
+  - Newly minted to attacker:  1,000,000,000,000 i6 (1 trillion)
+  - No revert -- no cap -- no event-emitted warning.
+
+Plain-English summary
+---------------------
+The i6 token has no hard ceiling. The only access control on minting is
+"caller must be the configured system contract". Once a single withdraw
+manipulates the spot price (C-1), the resulting mint blows past any
+sane supply level. This is what the existing 22_InvariantBreaking
+finding measured at "600,000x supply inflation in one tx" when reserves
+were artificially crashed.
+
+Recommended fix
+---------------
+Add an immutable `uint256 public constant MAX_SUPPLY` (e.g.
+1,000,000,000 * 1e18) and check `totalSupply() + amount <= MAX_SUPPLY`
+inside `mint()`. Alternatively rate-limit minting per second / per
+block.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/26_NoMaxSupply/*.sol' -vv

@@ -1,0 +1,61 @@
+==========================================================================
+29_BoosterBugs  --  AUDIT.md findings H-2 + M-6
+==========================================================================
+
+What this suite tests
+---------------------
+H-2: After a user is awarded the booster (`isBoosted == true`), the
+     `invest()` function still hardcodes `boostperc: 0` on EVERY new
+     package they create. They lose the +0.5% daily on every later
+     deposit, forever.
+M-6: Once `isBoosted == true`, no code path ever clears it. Even if
+     the qualifying directs all cap, the sponsor remains boosted.
+
+How it tests it
+---------------
+Deploys a fresh system. A sponsor invests 100 USDT, then 3 directs each
+invest 100 USDT under that sponsor (matching deposit + inside the
+7-day booster window). The sponsor's `isBoosted` flag flips to true.
+The sponsor then invests a SECOND package (200 USDT) and the test reads
+the new package's `boostperc` slot directly from
+`userInvestments(sponsor, 1).boostperc`.
+
+For M-6 the test probes the ABI for any `revokeBooster` / `removeBooster`
+public function.
+
+Results
+-------
+[PASS] test_H2_new_package_after_boost_has_zero_boostperc
+  - Sponsor `isBoosted` after qualifying: TRUE
+  - New package amount:                   200e18 (200 USDT)
+  - New package isActive:                 true
+  - New package boostperc:                0   (expected 5)
+
+[PASS] test_M6_isBoosted_is_never_revoked
+  - No `revokeBooster()` selector exists.
+  - No `removeBooster()` selector exists.
+  - `_checkAndApplyBooster` exits early on already-boosted -> no clear.
+
+Plain-English summary
+---------------------
+H-2: Once a user earns the booster, their FIRST package compounds at
+     the boosted rate. But every later package compounds at the base
+     rate. The contract silently strips the booster benefit from re-
+     invests.
+
+M-6: Boosters are sticky. The 7-day qualifying window matters at
+     activation, but once active the sponsor keeps the +0.5% even if
+     their qualifying directs cap or withdraw months later.
+
+Recommended fix
+---------------
+H-2: At the package-creation site in invest(), read the user's current
+     state and set `boostperc: user.isBoosted ? MIN_BOOSTER_PERC : 0`.
+M-6: Re-evaluate `directBoosterCount` and `directBoosterBusiness` on
+     direct cap/withdraw and clear `isBoosted` when the inequality
+     breaks. Or accept the "permanent reward" as design intent and
+     document it.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/29_BoosterBugs/*.sol' -vv

@@ -1,0 +1,53 @@
+==========================================================================
+30_GhostVolume  --  AUDIT.md finding H-3
+==========================================================================
+
+What this suite tests
+---------------------
+`_updateDownlineBusiness` increments `totalDownlineBusiness` and
+`freshBusiness` on every invest. NEITHER field is ever decremented
+when a downline caps, when their package reaches 2.5x, or when they
+withdraw. Rank qualifications and rank maintenance metrics therefore
+keep climbing from "ghost volume" that is no longer producing income.
+
+How it tests it
+---------------
+Builds a 6-long downline chain under a sponsor (sponsor -> direct ->
+5 sub-chain accounts, each depositing 1,000 USDT). Reads sponsor's
+`totalDownlineBusiness` (expect 6 x 1,000 = 6,000 USDT). Matures the
+chain a full year and forces each chain member to attempt withdraw to
+trigger possible caps. Re-reads the sponsor's metric -- if any
+decrement existed it would now be lower.
+
+Results
+-------
+[PASS] test_H3_totalDownlineBusiness_only_grows
+  - totalDownlineBusiness after build:           6,000 USDT
+  - freshBusiness after build:                   6,000 USDT
+  - After 1 year + every chain member withdraws: 6,000 USDT (UNCHANGED)
+  - Ghost volume confirmed.
+
+[PASS] test_H3_no_decrement_path_exists_in_abi
+  - No `clearDownlineBusiness()` selector exists.
+  - No `recomputeDownlineBusiness()` selector exists.
+
+Plain-English summary
+---------------------
+Rank qualification is measured against `directDB.totalDeposits +
+directDB.totalDownlineBusiness`. Once added, the volume stays counted
+forever even if the underlying account hits its 6x cap or simply stops
+generating. A user with 200 directs who each cycled through and capped
+can still rank up and collect rank salary using purely ghost volume.
+
+Recommended fix
+---------------
+Symmetric decrement: when a user's `isCapped` flips to true (and on
+each package deactivation), walk up `maxDownlineDepth` uplines and
+SUBTRACT the contribution from `totalDownlineBusiness` and
+`freshBusiness`. The existing `_updateUplineStream(false, ...)` cap-
+drop loop is the right shape for this; extend it to also touch the
+business counters.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/30_GhostVolume/*.sol' -vv

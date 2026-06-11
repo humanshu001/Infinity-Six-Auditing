@@ -1,0 +1,66 @@
+==========================================================================
+37_Hygiene  --  AUDIT.md findings L-2, L-4, L-5, I-2
+==========================================================================
+
+What this suite tests
+---------------------
+L-2: `maintenanceBurnedVolume` storage map is written by
+     `_consumeMaintenanceVolume` but never read by any other function.
+L-4: Token's `rescueTokens()` uses raw `transfer()` instead of OZ's
+     `SafeERC20.safeTransfer`. Non-standard ERC20s (BSC-USD style with
+     no bool return) may silently fail.
+L-5: No `pause()` / `unpause()` / `paused()` exists on the system.
+I-2: The DAO controller is modeled as a single address. Whether it is
+     actually a multisig contract depends entirely on what address the
+     deployer wired in.
+
+How it tests it
+---------------
+ABI probes via `staticcall` for each named function and live storage
+reads against the deployed system.
+
+Results
+-------
+[PASS] test_L2_maintenanceBurnedVolume_is_dead_state
+  - maintenanceBurnedVolume[ORIGIN][ORIGIN] read: OK (0)
+  - No other code path reads from this map -> it is dead state.
+
+[PASS] test_L4_token_rescueTokens_uses_raw_transfer
+  - `Token.rescueTokens(USDT, attacker, 0)` succeeds (sanity).
+  - Source-level note: the call uses `IERC20.transfer`, not
+    `SafeERC20.safeTransfer`. Non-bool-returning tokens (legacy USDT
+    layout on BSC) may silently fail.
+
+[PASS] test_L5_no_emergency_pause_function
+  - pause()    exists? NO
+  - unpause()  exists? NO
+  - paused()   exists? NO
+  - No on-chain circuit breaker -- critical bug response is "redeploy".
+
+[PASS] test_I2_dao_modeled_as_single_address
+  - DAOMultisigController = 0x4EA9802681Fb877DE5407974E63F197EE754032f
+  - Code size at DAO: 0  ->  the live DAO IS an EOA, not a multisig.
+
+Plain-English summary
+---------------------
+- The maintenance-volume bookkeeping is dead code; remove or wire up.
+- The token's `rescueTokens` should use SafeERC20.
+- An emergency-pause is a standard control that this protocol lacks.
+- The "DAO multisig controller" naming implies a multisig but the live
+  on-chain address has zero code -- it is a single-key EOA. This is
+  the most consequential finding of the four: every "DAO can rug"
+  scenario in AUDIT.md is gated on one private key.
+
+Recommended fix
+---------------
+- L-2: Remove maintenanceBurnedVolume or integrate it into
+       _checkMaintenanceQualification.
+- L-4: Switch rescueTokens to SafeERC20.safeTransfer.
+- L-5: Add OZ's Pausable + onlyDAO whenNotPaused gating on invest /
+       withdraw / claimRank.
+- I-2: Replace the EOA DAO controller with a Gnosis Safe (or similar)
+       contract.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/37_Hygiene/*.sol' -vv

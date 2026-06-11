@@ -1,0 +1,59 @@
+==========================================================================
+25_SpotPriceMint  --  AUDIT.md finding C-1
+==========================================================================
+
+What this suite tests
+---------------------
+Whether a withdrawer is paid in i6 against an unprotected pool spot
+price. The `withdraw()` function in i6systemcontract.sol takes ZERO
+arguments -- there is no `minTokensOut` slippage guard. The mint amount
+is computed as `usdtReward * 1e18 / getSpotPrice()`, so if reserves are
+skewed the user receives wildly more (or fewer) i6 than expected.
+
+How it tests it
+---------------
+Forks BSC, deploys a fresh i6 token + system + PancakeSwap pair seeded
+to spot ~ 1 USDT/i6. A victim invests 500 USDT and matures 30 days.
+First withdraw runs at clean spot. We then re-invest the victim, fast-
+forward another 30 days, and DUMP 5,000,000 i6 directly into the pair
++ sync -- collapsing spot price. The victim's second withdraw mints
+against the depressed reserves and the multiplier is reported.
+
+Results
+-------
+[PASS] test_C1_withdraw_mints_proportional_to_spot_collapse
+  - Spot BEFORE manipulation:           1.001 USDT / i6
+  - i6 minted to victim (baseline):     76.62 i6
+  - Spot AFTER manipulation:            0.167 USDT / i6
+  - i6 minted to victim (manipulated):  919.03 i6
+  - Mint multiplier (manipulated/base): 11x
+
+[PASS] test_C1_no_minTokensOut_parameter_exposed
+  - The withdraw() selector is `0x3ccfd60b` which corresponds to a
+    zero-argument signature. The user has NO way to pass a minimum
+    expected i6 output.
+
+Plain-English summary
+---------------------
+Anyone can collapse the spot price of i6 just before a withdrawer's
+transaction (or be the cause of the death spiral over time). The
+withdrawer then mints 10x+ more i6 against thin reserves. They cannot
+defend with a slippage parameter because the function has none.
+
+This is the core of the documented death-spiral dynamic: when the pool
+empties, withdrawers mint disproportionately huge i6 -- which they then
+sell, emptying the pool further.
+
+Recommended fix
+---------------
+1. Add `uint256 minTokensOut` to `withdraw()` and revert when
+   `userAmount < minTokensOut`.
+2. Replace `getSpotPrice()` with a TWAP using `price0CumulativeLast` /
+   `price1CumulativeLast` (already declared in the IUniswapV2Pair
+   interface) over at least 30 minutes.
+3. Cap the mint per withdraw against a DAO-tunable
+   `MAX_TOKENS_PER_USD`.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/25_SpotPriceMint/*.sol' -vv

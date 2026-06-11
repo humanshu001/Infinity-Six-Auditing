@@ -1,0 +1,47 @@
+==========================================================================
+36_Precision  --  AUDIT.md finding M-7
+==========================================================================
+
+What this suite tests
+---------------------
+`_rpow` (the compounding helper) rounds DOWN on every multiplication.
+Over many compounding days the user receives slightly less than the
+mathematical expectation. Similarly `_realizeSalary` divides
+`rankIncome / 30 days` before multiplying back by elapsed seconds --
+a small per-second precision loss biased AGAINST the user.
+
+How it tests it
+---------------
+Matures a 1,000 USDT package for 365 days and reads
+`getTotalLifetimeRWP`. Confirms the result is bounded by the 2.5x
+package cap. Also computes the salary-per-second figure for Rank 1
+(50 USDT / 30 days) and shows the cumulative 30-day shortfall.
+
+Results
+-------
+[PASS] test_M7_compound_truncation_after_1_year
+  - Principal:                                  1,000 USDT
+  - Lifetime RWP at 365 days (capped at 2.5x):  2,500 USDT (= cap)
+
+[PASS] test_M7_salary_per_second_truncation
+  - salaryPerSec for Rank 1:                    19,290,123,456,790 wei
+  - Sum over 30 days:                           49.99999999999968 USDT
+  - Expected (theoretical):                     50.0 USDT
+  - Shortfall:                                  320,000 wei (~0.00032 cents)
+
+Plain-English summary
+---------------------
+These are not exploitable losses, they are dust-level rounding biases
+in favor of the protocol. Every cycle, every user, the protocol keeps
+a few hundred thousand wei. At scale this adds up to "the house edge"
+inherent to integer fixed-point math.
+
+Recommended fix
+---------------
+Acceptable as-is; document the truncation direction. If user-facing
+fairness matters, switch to PRBMath or another higher-precision fixed-
+point library and round HALF_UP instead of DOWN.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/36_Precision/*.sol' -vv

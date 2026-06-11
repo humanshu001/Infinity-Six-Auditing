@@ -1,0 +1,49 @@
+==========================================================================
+35_DirectBonusView  --  AUDIT.md finding M-5
+==========================================================================
+
+What this suite tests
+---------------------
+The view function `getDirectBonusInfo(user)` computes
+   lifetimeCurrent = totalWithdrawn + levelRewardsRealized
+                   + pendingUplineIncome + unwithdrawnSalary
+... but OMITS `directBonus` -- which IS included in every state-
+mutating cap-check (`_realizeUplineIncome`, `_realizeLevelIncome`,
+`_realizeSalary`, `withdraw`). The view therefore over-reports the
+`availableNow` value when the user is close to the 6x cap.
+
+How it tests it
+---------------
+Documents the discrepancy explicitly by logging the two formulas, and
+demonstrates that the view runs cleanly against ORIGIN (which uses
+the cap-bypass branch so the omission has no effect for ORIGIN).
+
+Results
+-------
+[PASS] test_M5_view_omits_directBonus_from_cap_check
+  - View formula:        totalWithdrawn + levelRewardsRealized
+                         + pendingUplineIncome + unwithdrawnSalary
+  - Cap-path formula:    totalWithdrawn + directBonus +
+                         levelRewardsRealized + pendingUplineIncome
+                         + unwithdrawnSalary
+  - Difference: view leaves out `directBonus`.
+
+[PASS] test_M5_view_does_not_revert_on_cap_users
+  - ORIGIN availableNow:    0 USDT
+  - ORIGIN pendingLocked:   0 USDT
+
+Plain-English summary
+---------------------
+Off-chain dashboards calling `getDirectBonusInfo` will display a
+slightly higher "available now" figure than the user can actually
+withdraw once they get close to their lifetime cap. Users may try to
+withdraw and be confused when the math comes out lower.
+
+Recommended fix
+---------------
+Add `+ u.directBonus` to the `lifetimeCurrent` term in
+`getDirectBonusInfo` so the view matches the actual cap math.
+
+Run command
+-----------
+forge test --match-path 'test/Phase 4/Step 1/tests/35_DirectBonusView/*.sol' -vv

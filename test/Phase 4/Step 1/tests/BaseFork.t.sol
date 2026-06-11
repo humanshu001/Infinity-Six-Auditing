@@ -250,8 +250,22 @@ contract BaseForkSetup is Test {
     // FUND HELPERS -- BSC-USD has no public faucet, use `deal` cheatcode.
     // ========================================================================
 
+    /// @dev Lazy whale that funds via a single `deal` then dispenses to all
+    ///      other actors. This minimises the number of public-RPC storage
+    ///      lookups required during heavy tests (one deal call across the
+    ///      whole test, not one per investor).
+    function _ensureWhaleFunded(uint256 minAmount) internal {
+        uint256 bal = IERC20(USDT).balanceOf(whale);
+        if (bal < minAmount) {
+            deal(USDT, whale, minAmount + bal, true);
+        }
+    }
+
     function _dealUsdt(address to, uint256 amount) internal {
-        deal(USDT, to, IERC20(USDT).balanceOf(to) + amount, true);
+        // Re-route deals through the whale to minimise direct `deal` calls.
+        _ensureWhaleFunded(amount);
+        vm.prank(whale, whale);
+        IERC20(USDT).transfer(to, amount);
     }
 
     function _fundAndApprove(address user, uint256 usdtAmount, address spender) internal {
@@ -312,6 +326,11 @@ contract BaseForkSetup is Test {
         freshSystem = new InfinitySixSystem(USDT, address(freshToken), ROUTER, freshPairAddr);
         vm.label(address(freshToken),  "FreshToken");
         vm.label(address(freshSystem), "FreshSystem");
+
+        // The system contract sets DAOMultisigController = msg.sender in its
+        // constructor (= this test contract). Migrate to the test DAO so the
+        // rest of the harness can prank `freshDao` for any DAO action.
+        freshSystem.updateDAOMultisignController(freshDao);
 
         // DAO must wire up the token.
         vm.startPrank(freshDao);
