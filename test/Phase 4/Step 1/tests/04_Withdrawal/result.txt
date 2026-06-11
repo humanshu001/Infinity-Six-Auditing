@@ -1,0 +1,9 @@
+# Withdrawal Attacks results
+
+Summary of implemented tests and expected outcomes:
+
+- Withdraw twice same block: first withdraw should succeed (if funds exist), second within same block reverts due to same-block protection.
+- Withdraw cooldown behavior: immediate second withdraw (next block) should revert due to cooling period; withdraw after cooldown permitted if funds remain.
+- Withdraw immediately after deposit: expect revert (no available rewards immediately after deposit).
+
+Append actual run results (pass/fail and any revert messages) here after executing the tests.

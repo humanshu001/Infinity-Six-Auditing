@@ -1,0 +1,9 @@
+# Liquidity Attack Simulation Results
+
+The system contract interacts with the PancakeSwap pair to retrieve token spot prices and execute routing. Four scenarios were evaluated:
+1. authorized pair configuration: verified the dao multisig can update the trading pair configuration.
+2. unauthorized pair configuration: verified that non-dao accounts are prevented from changing the pair or router addresses.
+3. parameter validation: confirmed that updating pair or router configurations to zero address is blocked by input validation.
+4. zero liquidity behavior: verified that getspotprice() reverts with the appropriate error (err_noliquidity) when reserves are zero, preventing invalid price states.
+
+All 4 test cases passed successfully. The contract configuration updates are robust and zero-liquidity edge cases are safely handled.

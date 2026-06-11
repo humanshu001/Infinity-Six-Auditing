@@ -219,4 +219,3 @@ Input
 Input
 address
 Input (address)
-Descriptions included above are taken from the contract source code NatSpec. BscScan does not provide any guarantees on their safety or accuracy.

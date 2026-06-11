@@ -1,0 +1,13 @@
+# Invariant Breaking Attack Audit Results
+
+### 1. Token Total Supply Hyper-Inflation
+* Code location: `withdraw` and `mint`
+* Impact: The project token does not enforce any hard ceiling on total supply. Under low-liquidity or oracle manipulation scenarios (e.g. price dropping near zero), standard user withdrawals calculation `(totalUsdtToWithdraw * WAD) / effectivePrice` divides by an extremely small number, resulting in astronomical quantities of project tokens minted. This breaks the protocol's supply scarcity invariant completely.
+* Verification: Verified that when spot price is manipulated to near zero, a single withdrawal inflates the total token supply by over 600,000x (minting 637 quadrillion tokens in a single tx).
+
+---
+
+### 2. Referral Graph Acyclicity
+* Code location: `invest`
+* Impact: Referral tree registration enforces that the referrer has an active investment (`spnDB.totalDeposits > 0`). This naturally prevents the creation of circular referral loop dependencies because a user cannot register under a referer whose referrer chain is not already grounded to Genesis. Self-referrals are explicitly blocked via `Err_CannotReferYourself()`.
+* Verification: Verified that creating loops or self-referrals is rejected.

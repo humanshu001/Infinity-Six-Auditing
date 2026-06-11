@@ -6,8 +6,10 @@ solc = "0.8.34"
 optimizer = true
 optimizer_runs = 200
 via_ir = true
-evm_version = "paris"
+evm_version = "cancun"
+block_gas_limit = 999999999999
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/",
     "forge-std/=lib/forge-std/src/"
 ]
+

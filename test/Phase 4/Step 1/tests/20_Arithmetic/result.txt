@@ -1,0 +1,13 @@
+# Arithmetic Attack Audit Results
+
+### 1. Salary Reward Division-Before-Multiplication Precision Loss
+* Code location: `_realizeSalary`
+* Impact: Division-before-multiplication reduces the hourly/secondly reward payouts slightly below the mathematical value. In 30 days, the user loses precision on salary payouts due to truncation of fractions of a second.
+* Verification: Verified that salary per second for Rank 1 (50 USDT/month) truncates to 19290123456790 wei. Over 30 days, the total reward received is 49.99999999999968 USDT instead of exactly 50 USDT.
+
+---
+
+### 2. ROI Compound Multiplier Fall-Through Flaw
+* Code location: `_getMultiplier`
+* Impact: When the administrator updates the `MIN_ROI_PERC` using `setROI()`, only explicitly matched values (10, 8, 7) update the compounding rates. If the administrator sets it to another valid value (e.g. 9%), it falls through to the default of 5% in compounding calculations, rendering the settings update ineffective.
+* Verification: Verified that updating the ROI to 9% still compounds at the fallback rate of 5% in `getTotalLifetimeRWP`.
