@@ -1,7 +1,0 @@
-# Reentrancy Attack Simulation Results
-
-The system contract was analyzed for reentrancy vulnerabilities. Two scenarios were evaluated:
-1. reentrant investment block: a custom contract attempted to call invest() dynamically using a transfer callback mechanism. the call is rejected immediately due to the protocol's check requiring tx.origin == msg.sender.
-2. reentrant withdrawal block: a custom contract attempted to trigger withdraw() dynamically. the call is rejected immediately by the tx.origin check.
-
-All 2 test cases passed successfully. The tx.origin restriction acts as an absolute boundary that blocks smart contract callers from executing reentrancy, and the system contract's nonreentrant modifiers provide secondary security.

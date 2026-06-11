@@ -1,9 +1,0 @@
-# Cooldown Attack Simulation Results
-
-The contract enforces a 1-hour withdrawal cooldown on users. Six security test scenarios were executed:
-1. Fuzz Cooldown Time: Random time warping (up to 100 days) was tested. Withdrawals within the 1-hour cooldown window are correctly blocked, while withdrawals after the cooldown pass.
-2. Immediate Invest and Withdraw: Depositing funds during a withdrawal cooldown does not reset or bypass the timer. Subsequent withdrawal attempts remain blocked.
-3. Multi-Wallet Rotation: Validated that multiple wallets cannot manipulate the cooldown state of one another.
-4. Boundary Verification: Withdrawals at 3,599 seconds and exactly 3,600 seconds are rejected, while withdrawals at 3,601 seconds succeed.
-
-All 6 test cases passed. The 1-hour withdrawal cooldown mechanism is functional and secure.

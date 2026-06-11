@@ -1,9 +1,0 @@
-# tx.origin Call Restriction Test Results
-
-The system blocks contract interactions by requiring tx.origin == msg.sender. Four security test scenarios were executed:
-1. Contract Investment: A smart contract attempting to call invest() is blocked.
-2. Contract Withdrawal: A smart contract attempting to call withdraw() is blocked.
-3. Contract Token Transfer: A smart contract attempting to call transfer() is blocked.
-4. EOA Validation: Regular Externally Owned Accounts (EOAs) can interact with both the system and token contracts without issues.
-
-All 4 test cases passed. Smart contracts (including multi-signature wallets and automated bots) are successfully blocked from interacting with the protocol.

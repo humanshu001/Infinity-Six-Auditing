@@ -1,9 +1,0 @@
-# Supply Manipulation Attacks results
-
-Summary of implemented tests and expected outcomes:
-
-- Burn then mint: user burns own tokens and system can mint afterwards; balances update accordingly.
-- Mint then burn: mint to a user and then burn from that user; balances update accordingly.
-- Supply accounting monotonicity: totalSupply increases after successful mint operations.
-
-Record actual pass/fail output here after running the suite on the fork.
