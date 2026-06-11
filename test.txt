@@ -1,0 +1,14 @@
+Owner will be renounced and DAO will be sent to null address after this auditing. RescueDrain is intentional, 
+
+Every calculation is based on usdt only token price it checked at the time of withdrawal, so if price drops then no problem user will get tokens according to his investment and if price decreases he will get more tokens as per his investment. So he will sell them all at that price and get USDT back. So no problem is there. No problem with this no max supply part. If owner is renounced and DAO is sent to null address then there will not be any person who can change the address of the dex router so it will not go to any scam address. So no problem is there. 
+
+Explain me number 28 in more detail
+
+BoosterBugs is intentional as booster will not be applied to new package 
+
+30 is also not a problem we are intentionally not decreasing this values as we are counting the whole business from day one to till date
+
+When we will put DAO on null address then this number 31 will not occur 
+
+32 is also good as per the owner prespective so remove this one also
+
