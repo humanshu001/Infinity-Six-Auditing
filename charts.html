@@ -1,692 +1,819 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Infinity Six -- Live LP Death-Spiral Stress Test</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<meta charset="UTF-8" />
+<title>Infinity-Six -- 10k user stress simulation (live pool 595k USDT / 415k i6)</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js" crossorigin></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
 <style>
   :root {
-    --primary:  #1F3A93;
-    --accent:   #C0392B;
-    --gray:     #4A4A4A;
-    --light:    #F2F2F2;
-    --crit:     #B22222;
-    --opt:      #1F618D;
-    --pass:     #1E8449;
-    --warn:     #B8860B;
+    --bg: #0e1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --good: #3fb950;
+    --bad:  #f85149;
+    --warn: #d29922;
+    --blue: #58a6ff;
+    --info: #388bfd;
   }
   * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    color: var(--gray);
-    background: #fff;
-    line-height: 1.55;
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
   }
-  header {
-    background: linear-gradient(135deg, var(--primary), #2C5BB8);
-    color: #fff;
-    padding: 32px 48px 28px;
-  }
-  header h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.3px; }
-  header .sub { opacity: 0.92; font-size: 15px; }
-  header .meta { margin-top: 14px; font-size: 13px; opacity: 0.85; }
-  main { max-width: 1180px; margin: 0 auto; padding: 28px 32px 80px; }
-  h2 { color: var(--primary); border-bottom: 2px solid var(--light); padding-bottom: 6px; margin-top: 40px; font-size: 22px; }
-  h3 { color: var(--gray); font-size: 17px; margin-top: 28px; }
-  .cards {
+  h1 { margin: 0 0 6px 0; font-size: 22px; }
+  h2 { margin: 28px 0 8px 0; font-size: 18px; }
+  .sub { color: var(--muted); margin-bottom: 16px; line-height: 1.55; }
+  .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 14px;
-    margin: 20px 0 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
   }
   .card {
-    background: var(--light);
-    border-left: 4px solid var(--primary);
-    padding: 14px 16px;
-    border-radius: 4px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
-  .card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); }
-  .card .value { font-size: 22px; font-weight: 700; color: var(--primary); margin-top: 2px; word-break: break-word; }
-  .card .unit  { font-size: 13px; color: var(--gray); }
-  .card.warn   { border-left-color: var(--accent); }
-  .card.warn .value { color: var(--accent); }
-  .chart-wrap {
-    background: #fff;
-    border: 1px solid #e5e5e5;
-    border-radius: 6px;
-    padding: 18px 22px 12px;
-    margin: 18px 0;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  .card h3 { margin: 0 0 4px 0; font-size: 15px; }
+  .card .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .chart-wrapper { width: 100%; height: 280px; min-width: 0; }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 10px 0 20px 0;
   }
-  .chart-wrap .legend-note {
-    font-size: 12px; color: var(--gray); margin-top: 6px;
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
   }
-  .chart-host {
-    position: relative;
-    height: 360px;
+  .stat .lbl { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .stat .val { font-size: 18px; font-weight: 600; margin-top: 4px; }
+  .stat .val.bad { color: var(--bad); }
+  .stat .val.good { color: var(--good); }
+  .stat .val.warn { color: var(--warn); }
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 10px 0;
+    flex-wrap: wrap;
   }
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 13px;
-    margin: 14px 0;
-  }
-  th, td {
-    padding: 8px 10px;
-    text-align: right;
-    border-bottom: 1px solid #eee;
-  }
-  th:first-child, td:first-child { text-align: left; }
-  th { background: var(--light); color: var(--primary); font-weight: 600; }
-  tr:hover td { background: #fafbfd; }
-  .crit  { color: var(--crit); font-weight: 700; }
-  .warn-t{ color: var(--warn); font-weight: 600; }
-  .pass  { color: var(--pass); font-weight: 700; }
-  .mono  { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .controls label { font-size: 13px; color: var(--muted); }
   .pill {
     display: inline-block;
-    padding: 2px 9px;
-    font-size: 11px;
+    padding: 2px 8px;
     border-radius: 999px;
-    color: #fff;
-    background: var(--gray);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-left: 8px;
+    background: #1f6feb22;
+    color: var(--blue);
+    font-size: 11px;
+    margin-right: 6px;
   }
-  .pill.live    { background: var(--pass); }
-  .pill.danger  { background: var(--crit); }
-  .pill.warn    { background: var(--warn); }
+  .pill.bad { background: #f8514922; color: var(--bad); }
+  .pill.warn { background: #d2992222; color: var(--warn); }
   .note {
-    background: #fff8e6;
-    border-left: 4px solid var(--warn);
-    padding: 12px 14px;
-    border-radius: 4px;
-    margin: 14px 0;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 16px 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--border);
+  }
+  .explainer {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 4px solid var(--bad);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 16px 0 28px 0;
+  }
+  .explainer h3 {
+    margin: 0 0 12px 0;
+    color: var(--bad);
+    font-size: 17px;
+  }
+  .explainer p {
+    margin: 8px 0;
+    line-height: 1.6;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .explainer ol, .explainer ul {
+    padding-left: 22px;
+    line-height: 1.7;
     font-size: 14px;
   }
-  .note .label { font-weight: 700; color: var(--warn); margin-right: 4px; }
-  code, .addr {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12.5px;
-    background: var(--light);
-    padding: 1px 6px;
-    border-radius: 3px;
+  .explainer li {
+    margin: 4px 0;
   }
-  footer {
-    margin-top: 40px;
-    padding-top: 16px;
-    border-top: 1px solid #eee;
+  .explainer .step {
+    background: #0e1117;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 8px 0;
+  }
+  .explainer .step b { color: var(--warn); }
+  .live-pill {
+    display: inline-block;
+    background: var(--bad);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 4px;
     font-size: 12px;
-    color: var(--gray);
+    font-weight: 600;
+    margin-right: 8px;
   }
-  @media (max-width: 700px) {
-    header { padding: 20px; }
-    main   { padding: 18px; }
-    .chart-host { height: 280px; }
+  .layman-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+  .layman-card b { color: var(--warn); }
+
+  /* KPI Description Card */
+  .kpi-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 4px solid var(--info);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 16px 0 28px 0;
+  }
+  .kpi-card h3 {
+    margin: 0 0 12px 0;
+    color: var(--info);
+    font-size: 17px;
+  }
+  .kpi-card p {
+    margin: 6px 0;
+    line-height: 1.6;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .kpi-item {
+    background: #0e1117;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+  .kpi-item .kpi-name {
+    font-weight: 700;
+    color: var(--blue);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .kpi-item .kpi-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .kpi-item .kpi-desc b { color: var(--text); }
+  .kpi-item .kpi-desc code {
+    background: #21262d;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: var(--blue);
+  }
+
+  /* ============ MOBILE RESPONSIVE ============ */
+  @media (max-width: 1100px) {
+    .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 820px) {
+    body { padding: 14px; }
+    h1 { font-size: 19px; }
+    h2 { font-size: 16px; margin: 22px 0 6px 0; }
+    .grid { grid-template-columns: 1fr; gap: 14px; }
+    .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .stat .val { font-size: 16px; }
+    .stat .lbl { font-size: 10px; }
+    .card { padding: 12px; }
+    .chart-wrapper { height: 240px; }
+    .explainer { padding: 14px 16px; }
+    .explainer h3 { font-size: 15px; }
+    .explainer p, .explainer ol, .explainer ul { font-size: 13px; }
+    .layman-card { font-size: 12px; padding: 10px 12px; }
+    .live-pill { font-size: 11px; padding: 2px 8px; }
+    .pill { font-size: 10px; }
+    .kpi-card { padding: 14px 16px; }
+    .kpi-card h3 { font-size: 15px; }
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    h1 { font-size: 17px; }
+    .summary { grid-template-columns: 1fr; }
+    .chart-wrapper { height: 220px; }
+    .controls { flex-direction: column; align-items: flex-start; gap: 6px; }
   }
 </style>
 </head>
 <body>
+<div id="app"></div>
 
-<header>
-  <h1>Infinity Six &mdash; Live LP Death-Spiral Stress Test</h1>
-  <div class="sub">USDT &harr; i6 pair on PancakeSwap V2 (BNB Smart Chain)</div>
-  <div class="meta">
-    Pair <span class="addr" style="background:rgba(255,255,255,0.15);color:#fff">0x13D55200&hellip;C782</span>
-    &nbsp;&middot;&nbsp;
-    Token0 USDT <span class="addr" style="background:rgba(255,255,255,0.15);color:#fff">0x55d398&hellip;7955</span>
-    &nbsp;&middot;&nbsp;
-    Token1 i6 <span class="addr" style="background:rgba(255,255,255,0.15);color:#fff">0xd2e052&hellip;1593</span>
-    <span class="pill live">live values</span>
-  </div>
-</header>
+<script type="text/babel">
+const { useState } = React;
+const { LineChart, BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGrid,
+        Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } = Recharts;
 
-<main>
+// =======================================================================
+// Data captured from `forge test --match-contract StressSimulationTest -vv`
+// Real PancakeSwap V2 math via stateful mock pair/router.
+// Seed: 595,320 USDT / 415,237 i6 (= 1.4337 USDT per i6, LIVE liquidity
+// pulled directly from BSC mainnet pair 0x13D55200..C782 at audit time).
+// 10,000 users x 100 USDT each across 50 L1 sponsors x 200 directs.
+// =======================================================================
 
-<!-- =================================================================== -->
-<!-- 1. LIVE STATE                                                         -->
-<!-- =================================================================== -->
-<h2>1. Live LP state (snapshot)</h2>
+// step encoding:
+//   0           : seed
+//   1000..9999  : invest phase (every 1000 users)
+//   11000..19999: withdraw+sell phase (every 1000 users, offset +10000)
 
-<div class="cards">
-  <div class="card">
-    <div class="label">USDT in pair</div>
-    <div class="value">595,319.568</div>
-    <div class="unit">USDT &nbsp;(reserve0)</div>
-  </div>
-  <div class="card">
-    <div class="label">i6 in pair</div>
-    <div class="value">415,236.515</div>
-    <div class="unit">i6 &nbsp;(reserve1)</div>
-  </div>
-  <div class="card">
-    <div class="label">Spot price</div>
-    <div class="value">1.4337</div>
-    <div class="unit">USDT per i6</div>
-  </div>
-  <div class="card">
-    <div class="label">i6 total supply</div>
-    <div class="value">596,909.656</div>
-    <div class="unit">i6 (whole network)</div>
-  </div>
-  <div class="card warn">
-    <div class="label">i6 outside the LP</div>
-    <div class="value">181,673.141</div>
-    <div class="unit">i6 (dumpable circulating)</div>
-  </div>
-  <div class="card">
-    <div class="label">Buying status</div>
-    <div class="value pass" style="color:var(--pass)">false</div>
-    <div class="unit">~122.4 days left on timer</div>
-  </div>
-</div>
+const BEST = [
+  { "step": 0, "phase": "seed", "usdt": 5953200, "i6": 4152370, "spot": 1.433687, "supply": 830474 },
+  { "step": 1000, "phase": "invest@1000", "usdt": 6058300, "i6": 4137970.16, "spot": 1.464075, "supply": 8290340.16 },
+  { "step": 2000, "phase": "invest@2000", "usdt": 6158300, "i6": 4124544.35, "spot": 1.493086, "supply": 8276914.35 },
+  { "step": 3000, "phase": "invest@3000", "usdt": 6258300, "i6": 4111377.33, "spot": 1.522191, "supply": 8263747.33 },
+  { "step": 4000, "phase": "invest@4000", "usdt": 6358300, "i6": 4098460.09, "spot": 1.551388, "supply": 8250830.09 },
+  { "step": 5000, "phase": "invest@5000", "usdt": 6458300, "i6": 4085784.07, "spot": 1.580676, "supply": 8238154.07 },
+  { "step": 6000, "phase": "invest@6000", "usdt": 6558300, "i6": 4073341.14, "spot": 1.610054, "supply": 8225711.14 },
+  { "step": 7000, "phase": "invest@7000", "usdt": 6658300, "i6": 4061123.54, "spot": 1.639522, "supply": 8213493.54 },
+  { "step": 8000, "phase": "invest@8000", "usdt": 6758300, "i6": 4049123.92, "spot": 1.669077, "supply": 8201493.92 },
+  { "step": 9000, "phase": "invest@9000", "usdt": 6858300, "i6": 4037335.23, "spot": 1.698719, "supply": 8189705.23 },
+  { "step": 9999, "phase": "post-invest", "usdt": 6958200, "i6": 4025762.26, "spot": 1.728418, "supply": 8178132.26 },
+  { "step": 11000, "phase": "withdraw@1000", "usdt": 6930660.24, "i6": 4041799.26, "spot": 1.714746, "supply": 8194169.26 },
+  { "step": 12000, "phase": "withdraw@2000", "usdt": 6874853.47, "i6": 4074691.21, "spot": 1.687208, "supply": 8227061.21 },
+  { "step": 13000, "phase": "withdraw@3000", "usdt": 6784225.23, "i6": 4129261, "spot": 1.642964, "supply": 8281631 },
+  { "step": 14000, "phase": "withdraw@4000", "usdt": 6650726.54, "i6": 4212356.63, "spot": 1.578861, "supply": 8364726.63 },
+  { "step": 15000, "phase": "withdraw@5000", "usdt": 6464442.27, "i6": 4334051.67, "spot": 1.491547, "supply": 8486421.67 },
+  { "step": 16000, "phase": "withdraw@6000", "usdt": 6230675.16, "i6": 4497074.95, "spot": 1.385495, "supply": 8649444.95 },
+  { "step": 17000, "phase": "withdraw@7000", "usdt": 5993778.1, "i6": 4675270.74, "spot": 1.282017, "supply": 8827640.74 },
+  { "step": 18000, "phase": "withdraw@8000", "usdt": 5756881.4, "i6": 4868150.95, "spot": 1.18256, "supply": 9020520.95 },
+  { "step": 19000, "phase": "withdraw@9000", "usdt": 5519985.1, "i6": 5077607.77, "spot": 1.087123, "supply": 9229977.77 },
+  { "step": 19999, "phase": "post-withdraw", "usdt": 5283326.14, "i6": 5305634.51, "spot": 0.995795, "supply": 9458004.51 }
+];
 
-<div class="note">
-  <span class="label">How to read this page.</span>
-  All numbers below are projected against the actual on-chain reserves above.
-  The death spiral attack is the one described in finding <strong>C-1</strong>:
-  someone dumps i6 directly into the LP (transfer + <code>sync()</code>),
-  which collapses <code>getSpotPrice()</code>. The next <code>withdraw()</code> call
-  then mints
-  <code>usdtReward &times; 1e18 / spot</code> i6 to the withdrawer &mdash;
-  producing arbitrarily inflated mints when spot is low.
-</div>
+const AVG = [
+  { "step": 0, "phase": "seed", "usdt": 1785960, "i6": 1245711, "spot": 1.433687, "supply": 2491422 },
+  { "step": 1000, "phase": "invest@1000", "usdt": 1891060, "i6": 1231650.56, "spot": 1.535387, "supply": 2477361.56 },
+  { "step": 2000, "phase": "invest@2000", "usdt": 1991060, "i6": 1219115.89, "spot": 1.6332, "supply": 2464826.89 },
+  { "step": 3000, "phase": "invest@3000", "usdt": 2091060, "i6": 1207314, "spot": 1.731994, "supply": 2453025 },
+  { "step": 4000, "phase": "invest@4000", "usdt": 2191060, "i6": 1196169.94, "spot": 1.83173, "supply": 2441880.94 },
+  { "step": 5000, "phase": "invest@5000", "usdt": 2291060, "i6": 1185619.44, "spot": 1.932374, "supply": 2431330.44 },
+  { "step": 6000, "phase": "invest@6000", "usdt": 2391060, "i6": 1175606.96, "spot": 2.033894, "supply": 2421317.96 },
+  { "step": 7000, "phase": "invest@7000", "usdt": 2491060, "i6": 1166084.23, "spot": 2.136261, "supply": 2411795.23 },
+  { "step": 8000, "phase": "invest@8000", "usdt": 2591060, "i6": 1157009.02, "spot": 2.239447, "supply": 2402720.02 },
+  { "step": 9000, "phase": "invest@9000", "usdt": 2691060, "i6": 1148344.2, "spot": 2.343426, "supply": 2394055.2 },
+  { "step": 9999, "phase": "post-invest", "usdt": 2790960, "i6": 1140065.08, "spot": 2.448071, "supply": 2385776.08 },
+  { "step": 11000, "phase": "withdraw@1000", "usdt": 2763420.41, "i6": 1151455.31, "spot": 2.399937, "supply": 2397166.31 },
+  { "step": 12000, "phase": "withdraw@2000", "usdt": 2707614.35, "i6": 1175247.8, "spot": 2.303867, "supply": 2420958.8 },
+  { "step": 13000, "phase": "withdraw@3000", "usdt": 2616988.03, "i6": 1216050.39, "spot": 2.152039, "supply": 2461761.39 },
+  { "step": 14000, "phase": "withdraw@4000", "usdt": 2483493.73, "i6": 1281584.45, "spot": 1.937831, "supply": 2527295.45 },
+  { "step": 15000, "phase": "withdraw@5000", "usdt": 2297218.79, "i6": 1385775.24, "spot": 1.657714, "supply": 2631486.24 },
+  { "step": 16000, "phase": "withdraw@6000", "usdt": 2063468.18, "i6": 1543171.44, "spot": 1.337161, "supply": 2788882.44 },
+  { "step": 17000, "phase": "withdraw@7000", "usdt": 1826590.82, "i6": 1743827.01, "spot": 1.047461, "supply": 2989538.01 },
+  { "step": 18000, "phase": "withdraw@8000", "usdt": 1589717.47, "i6": 2004360.77, "spot": 0.793129, "supply": 3250071.77 },
+  { "step": 19000, "phase": "withdraw@9000", "usdt": 1352849.44, "i6": 2356253.29, "spot": 0.574153, "supply": 3601964.29 },
+  { "step": 19999, "phase": "post-withdraw", "usdt": 1116225.64, "i6": 2857121.4, "spot": 0.390682, "supply": 4102832.4 }
+];
 
-<!-- =================================================================== -->
-<!-- 2. SCENARIO TABLE                                                     -->
-<!-- =================================================================== -->
-<h2>2. Single-shot dump scenarios</h2>
+const WORST = [
+  { "step": 0, "phase": "seed", "usdt": 595320, "i6": 415237, "spot": 1.433687, "supply": 830474 },
+  { "step": 1000, "phase": "invest@1000", "usdt": 700420, "i6": 402047.82, "spot": 1.742131, "supply": 817284.82 },
+  { "step": 2000, "phase": "invest@2000", "usdt": 800420, "i6": 391535.29, "spot": 2.044311, "supply": 806772.29 },
+  { "step": 3000, "phase": "invest@3000", "usdt": 900420, "i6": 382490.56, "spot": 2.354097, "supply": 797727.56 },
+  { "step": 4000, "phase": "invest@4000", "usdt": 1000420, "i6": 374576.67, "spot": 2.670802, "supply": 789813.67 },
+  { "step": 5000, "phase": "invest@5000", "usdt": 1100420, "i6": 367558.62, "spot": 2.993863, "supply": 782795.62 },
+  { "step": 6000, "phase": "invest@6000", "usdt": 1200420, "i6": 361266.37, "spot": 3.322811, "supply": 776503.37 },
+  { "step": 7000, "phase": "invest@7000", "usdt": 1300420, "i6": 355573.11, "spot": 3.657251, "supply": 770810.11 },
+  { "step": 8000, "phase": "invest@8000", "usdt": 1400420, "i6": 350381.9, "spot": 3.996839, "supply": 765618.9 },
+  { "step": 9000, "phase": "invest@9000", "usdt": 1500420, "i6": 345617.08, "spot": 4.341279, "supply": 760854.08 },
+  { "step": 9999, "phase": "post-invest", "usdt": 1600320, "i6": 341222.73, "spot": 4.689957, "supply": 756459.73 },
+  { "step": 11000, "phase": "withdraw@1000", "usdt": 1572780.63, "i6": 347212.64, "spot": 4.529733, "supply": 762449.64 },
+  { "step": 12000, "phase": "withdraw@2000", "usdt": 1516975.47, "i6": 360018.19, "spot": 4.213608, "supply": 775255.19 },
+  { "step": 13000, "phase": "withdraw@3000", "usdt": 1426351.7, "i6": 382951.19, "spot": 3.724631, "supply": 798188.19 },
+  { "step": 14000, "phase": "withdraw@4000", "usdt": 1292863.61, "i6": 422594.93, "spot": 3.059345, "supply": 837831.93 },
+  { "step": 15000, "phase": "withdraw@5000", "usdt": 1106603.34, "i6": 493917.41, "spot": 2.240462, "supply": 909154.41 },
+  { "step": 16000, "phase": "withdraw@6000", "usdt": 872883.17, "i6": 626539.41, "spot": 1.393182, "supply": 1041776.41 },
+  { "step": 17000, "phase": "withdraw@7000", "usdt": 636051.89, "i6": 860511, "spot": 0.739156, "supply": 1275748 },
+  { "step": 18000, "phase": "withdraw@8000", "usdt": 399255.94, "i6": 1372474.69, "spot": 0.290902, "supply": 1787711.69 },
+  { "step": 19000, "phase": "withdraw@9000", "usdt": 162562.45, "i6": 3378415.27, "spot": 0.048118, "supply": 3793652.27 },
+  { "step": 19999, "phase": "post-withdraw", "usdt": 0, "i6": 1557870707079729.5, "spot": 0, "supply": 21591128208495310000 }
+];
 
-<p>
-Each row shows the LP state and the per-USDT mint after a single one-shot
-dump of <em>X</em> i6 into the pair, against the live reserves above. The
-USDT leg of the pool is unchanged by a transfer-plus-sync dump &mdash; only
-the i6 leg grows, which is what collapses the spot price.
-</p>
+const WAVES = [
+  { "wave": 1, "minted": 5980.85, "pulled": 27498.43, "spot": 4.529969, "rUsdt": 1572821.57, "supply": 762440.58 },
+  { "wave": 2, "minted": 12797.54, "pulled": 55774.37, "spot": 4.214007, "rUsdt": 1517047.2, "supply": 775238.12 },
+  { "wave": 3, "minted": 22920.32, "pulled": 90584.98, "spot": 3.725208, "rUsdt": 1426462.22, "supply": 798158.45 },
+  { "wave": 4, "minted": 39621.6, "pulled": 133440.25, "spot": 3.060095, "rUsdt": 1293021.97, "supply": 837780.05 },
+  { "wave": 5, "minted": 71277.83, "pulled": 186202.86, "spot": 2.241337, "rUsdt": 1106819.1, "supply": 909057.88 },
+  { "wave": 6, "minted": 132548.15, "pulled": 233699.09, "spot": 1.393939, "rUsdt": 873120.01, "supply": 1041606.03 },
+  { "wave": 7, "minted": 233820.9, "pulled": 236831.3, "spot": 0.739707, "rUsdt": 636288.71, "supply": 1275426.93 },
+  { "wave": 8, "minted": 511469.3, "pulled": 236796.01, "spot": 0.291248, "rUsdt": 399492.7, "supply": 1786896.23 },
+  { "wave": 9, "minted": 2001834.6, "pulled": 236693.69, "spot": 0.048258, "rUsdt": 162799.02, "supply": 3788730.84 },
+  { "wave": 10, "minted": 21591128208491516000, "pulled": 162799.02, "spot": 0, "rUsdt": 0, "supply": 21591128208495310000 }
+];
 
-<table>
-  <thead>
-    <tr>
-      <th>Scenario</th>
-      <th>i6 dumped</th>
-      <th>i6 in LP after</th>
-      <th>USDT in LP after</th>
-      <th>Spot (USDT/i6)</th>
-      <th>Price drop</th>
-      <th>i6 minted per 100 USDT reward</th>
-      <th>Mint multiplier</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>Baseline (no dump)</td>            <td class="mono">0</td>          <td class="mono">415,237</td>    <td class="mono">595,319</td> <td class="mono">1.4337</td>  <td class="mono">0.00&#37;</td>  <td class="mono">69.75</td>    <td class="pass mono">1.00&times;</td></tr>
-    <tr><td>Small dump</td>                    <td class="mono">25,000</td>     <td class="mono">440,237</td>    <td class="mono">595,319</td> <td class="mono">1.3523</td>  <td class="mono">5.68&#37;</td>  <td class="mono">73.95</td>    <td class="mono">1.06&times;</td></tr>
-    <tr><td>Medium dump</td>                   <td class="mono">50,000</td>     <td class="mono">465,237</td>    <td class="mono">595,319</td> <td class="mono">1.2796</td>  <td class="mono">10.75&#37;</td> <td class="mono">78.15</td>    <td class="mono">1.12&times;</td></tr>
-    <tr><td>Moderate dump</td>                 <td class="mono">100,000</td>    <td class="mono">515,237</td>    <td class="mono">595,319</td> <td class="mono">1.1554</td>  <td class="mono">19.41&#37;</td> <td class="mono">86.55</td>    <td class="mono">1.24&times;</td></tr>
-    <tr><td>All circulating dumped</td>        <td class="mono">181,673</td>    <td class="mono">596,910</td>    <td class="mono">595,319</td> <td class="mono">0.9973</td>  <td class="warn-t mono">30.44&#37;</td>  <td class="warn-t mono">100.27</td>   <td class="warn-t mono">1.44&times;</td></tr>
-    <tr><td>250k dump</td>                     <td class="mono">250,000</td>    <td class="mono">665,237</td>    <td class="mono">595,319</td> <td class="mono">0.8949</td>  <td class="warn-t mono">37.58&#37;</td>  <td class="warn-t mono">111.74</td>   <td class="warn-t mono">1.60&times;</td></tr>
-    <tr><td>500k dump</td>                     <td class="mono">500,000</td>    <td class="mono">915,237</td>    <td class="mono">595,319</td> <td class="mono">0.6505</td>  <td class="warn-t mono">54.63&#37;</td>  <td class="warn-t mono">153.74</td>   <td class="warn-t mono">2.20&times;</td></tr>
-    <tr><td>1M dump (requires C-2 exploit)</td><td class="mono">1,000,000</td>  <td class="mono">1,415,237</td>  <td class="mono">595,319</td> <td class="crit mono">0.4207</td>  <td class="crit mono">70.66&#37;</td> <td class="crit mono">237.73</td> <td class="crit mono">3.41&times;</td></tr>
-    <tr><td>2.5M dump</td>                     <td class="mono">2,500,000</td>  <td class="mono">2,915,237</td>  <td class="mono">595,319</td> <td class="crit mono">0.2042</td>  <td class="crit mono">85.76&#37;</td> <td class="crit mono">489.69</td> <td class="crit mono">7.02&times;</td></tr>
-    <tr><td>5M dump (replicates test 25)</td>  <td class="mono">5,000,000</td>  <td class="mono">5,415,237</td>  <td class="mono">595,319</td> <td class="crit mono">0.1099</td>  <td class="crit mono">92.33&#37;</td> <td class="crit mono">909.64</td> <td class="crit mono">13.04&times;</td></tr>
-    <tr><td>10M dump</td>                      <td class="mono">10,000,000</td> <td class="mono">10,415,237</td> <td class="mono">595,319</td> <td class="crit mono">0.0572</td>  <td class="crit mono">96.01&#37;</td> <td class="crit mono">1,749.52</td><td class="crit mono">25.08&times;</td></tr>
-    <tr><td>25M dump (catastrophic)</td>       <td class="mono">25,000,000</td> <td class="mono">25,415,237</td> <td class="mono">595,319</td> <td class="crit mono">0.0234</td>  <td class="crit mono">98.37&#37;</td> <td class="crit mono">4,269.18</td><td class="crit mono">61.21&times;</td></tr>
-  </tbody>
-</table>
+const fmt = (n) => {
+  if (n === 0) return "0";
+  if (Math.abs(n) >= 1e15) return (n).toExponential(2);
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(2) + "k";
+  if (Math.abs(n) >= 1)   return n.toFixed(2);
+  return n.toFixed(6);
+};
 
-<div class="note">
-  <span class="label">Key observation.</span>
-  The USDT leg of the pool is <strong>not</strong> drained by the spiral &mdash; the
-  595,319 USDT sits inside the pair throughout, because <code>withdraw()</code> mints
-  fresh i6 from the token contract rather than swapping against the LP. What
-  changes is the i6 leg and the spot it implies, which then governs the size
-  of every subsequent mint. The 595,319 USDT only leaves the pair if someone
-  performs an actual swap (e.g. via <code>invest()</code>'s 60&#37; USDT&rarr;i6 swap,
-  which would actually counter the spiral).
-</div>
-
-<!-- =================================================================== -->
-<!-- 3. CHART: SPOT PRICE COLLAPSE                                         -->
-<!-- =================================================================== -->
-<h2>3. Spot-price collapse vs. i6 dumped</h2>
-
-<div class="chart-wrap">
-  <div class="chart-host"><canvas id="spotChart"></canvas></div>
-  <div class="legend-note">
-    Solid line: spot price (USDT/i6) after a single-shot dump. Dashed line at
-    1.4337 = current live spot. The curve is the constant-product LP price
-    formula <code>USDT_reserve / (i6_reserve + dump)</code>.
-  </div>
-</div>
-
-<!-- =================================================================== -->
-<!-- 4. CHART: MINT MULTIPLIER                                             -->
-<!-- =================================================================== -->
-<h2>4. Mint multiplier on withdraw() at each dump level</h2>
-
-<div class="chart-wrap">
-  <div class="chart-host"><canvas id="multChart"></canvas></div>
-  <div class="legend-note">
-    Multiplier = <code>(baseline mint) / (mint at depressed spot)</code> for a
-    fixed USDT reward. At a 5M i6 dump the withdrawer mints
-    <strong>13&times;</strong> the baseline amount &mdash; matching the live-fork
-    measurement reported in test <code>25_SpotPriceMint</code>.
-  </div>
-</div>
-
-<!-- =================================================================== -->
-<!-- 5. CHART: LP COMPOSITION                                              -->
-<!-- =================================================================== -->
-<h2>5. LP composition by scenario</h2>
-
-<div class="chart-wrap">
-  <div class="chart-host"><canvas id="compChart"></canvas></div>
-  <div class="legend-note">
-    Stacked composition of the LP after each one-shot dump. USDT leg stays
-    flat (only swaps move it). i6 leg grows linearly with the dump, which is
-    what depresses the implied price.
-  </div>
-</div>
-
-<!-- =================================================================== -->
-<!-- 6. MULTI-ROUND SIMULATION                                             -->
-<!-- =================================================================== -->
-<h2>6. 30-day multi-round spiral projection</h2>
-
-<p>
-The single-shot scenarios above assume a one-time dump. The real risk is the
-<strong>feedback loop</strong>: each depressed-spot withdraw mints fresh i6
-that can be re-dumped into the LP the next day, depressing the spot further.
-The chart below projects 30 days of withdrawal activity against today's live
-reserves under three assumptions about daily withdrawal pressure and
-recycling. The seed event in every scenario is the 181,673 i6 of currently
-circulating supply being dumped in day 0.
-</p>
-
-<table>
-  <thead>
-    <tr><th>Scenario</th><th>Daily withdrawals</th><th>Recycle into LP</th><th>Outcome (day 30)</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Conservative</td><td class="mono">5,000 USDT / day</td><td class="mono">25&#37; of new i6</td><td class="mono">spot &asymp; 0.9365, supply &asymp; 752k i6</td></tr>
-    <tr><td>Moderate</td>    <td class="mono">15,000 USDT / day</td><td class="mono">50&#37; of new i6</td><td class="mono">spot &asymp; 0.6851, supply &asymp; 1.14M i6</td></tr>
-    <tr><td>Aggressive</td>  <td class="mono">30,000 USDT / day</td><td class="mono">75&#37; of new i6</td><td class="mono">spot &asymp; 0.3277, supply &asymp; 2.22M i6</td></tr>
-  </tbody>
-</table>
-
-<div class="chart-wrap">
-  <div class="chart-host"><canvas id="spiralSpotChart"></canvas></div>
-  <div class="legend-note">
-    Day-by-day spot price under the three scenarios. Y-axis is USDT/i6;
-    starts at today's 1.4337 and collapses as withdraw-recycled i6 enters
-    the LP.
-  </div>
-</div>
-
-<div class="chart-wrap">
-  <div class="chart-host"><canvas id="spiralSupplyChart"></canvas></div>
-  <div class="legend-note">
-    i6 total supply over 30 days. Supply growth is driven by
-    <code>withdraw()</code> minting against a depressed spot &mdash; finding
-    <strong>C-2</strong> (no <code>MAX_SUPPLY</code>) is what allows it to
-    grow without bound.
-  </div>
-</div>
-
-<!-- =================================================================== -->
-<!-- 7. FIX SIMULATION                                                     -->
-<!-- =================================================================== -->
-<h2>7. What changes if C-1 + C-2 are fixed</h2>
-
-<p>
-The recommended fixes are: (i) accept <code>minTokensOut</code> on
-<code>withdraw()</code>, (ii) read price from a 30-minute TWAP instead of
-spot, (iii) cap the mint via a DAO-tunable <code>MAX_TOKENS_PER_USD</code>,
-and (iv) cap <code>totalSupply()</code> at a hard ceiling inside
-<code>mint()</code>.
-</p>
-
-<div class="chart-wrap">
-  <div class="chart-host"><canvas id="fixChart"></canvas></div>
-  <div class="legend-note">
-    Same aggressive 30-day scenario with the fixes applied. The TWAP smooths
-    short-term spot manipulation, and the <code>MAX_SUPPLY</code> cap puts a
-    hard ceiling on supply growth. Both curves flatten quickly.
-  </div>
-</div>
-
-<!-- =================================================================== -->
-<!-- 8. FINAL READ-OUT                                                     -->
-<!-- =================================================================== -->
-<h2>8. Live-LP read-out for the audit report</h2>
-
-<div class="cards">
-  <div class="card warn">
-    <div class="label">If 181,673 i6 dumped today</div>
-    <div class="value">1.44&times;</div>
-    <div class="unit">mint inflation on next withdraw (spot &rarr; 0.9973)</div>
-  </div>
-  <div class="card warn">
-    <div class="label">If 500k i6 dumped today</div>
-    <div class="value">2.20&times;</div>
-    <div class="unit">spot &rarr; 0.6505 USDT/i6 (-55&#37;)</div>
-  </div>
-  <div class="card warn">
-    <div class="label">If 5M i6 dumped today</div>
-    <div class="value">13.04&times;</div>
-    <div class="unit">spot &rarr; 0.1099 USDT/i6 (-92&#37;) &mdash; matches test 25</div>
-  </div>
-  <div class="card warn">
-    <div class="label">30-day aggressive spiral</div>
-    <div class="value">2.22M i6</div>
-    <div class="unit">i6 supply explosion vs. live 596,909 (3.7&times; today)</div>
-  </div>
-</div>
-
-<footer>
-  Generated against live BNB Smart Chain state. Reserves and supply pulled via
-  <code>cast call</code> against PancakeSwap V2 pair
-  <code>0x13D55200&hellip;C782</code>, USDT
-  <code>0x55d398&hellip;7955</code>, and i6 token
-  <code>0xd2e052&hellip;1593</code>.
-  Mint formula and oracle path verified against
-  <code>i6systemcontract.sol :: _executeWithdrawTransfer</code> (lines 573&ndash;607).
-</footer>
-
-</main>
-
-<script>
-// =====================================================================
-//  Constants pulled from live BSC mainnet
-// =====================================================================
-const USDT_LP_BASE = 595319.568459518;
-const I6_LP_BASE   = 415236.514774325;
-const SUPPLY_BASE  = 596909.655896733;
-const SPOT_BASE    = USDT_LP_BASE / I6_LP_BASE;     // 1.4337
-
-// Common chart options
-const fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-Chart.defaults.font.family = fontFamily;
-Chart.defaults.color = '#4A4A4A';
-
-// =====================================================================
-//  1. Spot-price collapse curve
-// =====================================================================
-function buildSweep() {
-  const xs = [];
-  const ys_spot = [];
-  const ys_mult = [];
-  const max = 12_000_000;
-  const step = 250_000;
-  for (let d = 0; d <= max; d += step) {
-    const new_i6 = I6_LP_BASE + d;
-    const spot = USDT_LP_BASE / new_i6;
-    xs.push(d);
-    ys_spot.push(spot);
-    ys_mult.push(SPOT_BASE / spot);
-  }
-  return { xs, ys_spot, ys_mult };
-}
-const sweep = buildSweep();
-const xLabels = sweep.xs.map(v => (v >= 1e6 ? (v/1e6).toFixed(1)+'M' : (v/1e3).toFixed(0)+'k'));
-
-new Chart(document.getElementById('spotChart'), {
-  type: 'line',
-  data: {
-    labels: xLabels,
-    datasets: [
-      {
-        label: 'Spot price (USDT/i6)',
-        data: sweep.ys_spot,
-        borderColor: '#C0392B',
-        backgroundColor: 'rgba(192,57,43,0.10)',
-        tension: 0.25,
-        borderWidth: 2,
-        fill: true,
-        pointRadius: 0,
-      },
-      {
-        label: 'Live baseline (1.4337)',
-        data: sweep.xs.map(_ => SPOT_BASE),
-        borderColor: '#1F3A93',
-        borderDash: [6, 4],
-        borderWidth: 1.5,
-        pointRadius: 0,
-        fill: false,
-      },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: 'Spot price after a single-shot dump of N i6' },
-      legend: { position: 'bottom' },
-    },
-    scales: {
-      x: { title: { display: true, text: 'i6 dumped into LP' } },
-      y: { title: { display: true, text: 'USDT per i6' }, min: 0, max: 1.6 },
-    },
-  },
-});
-
-// =====================================================================
-//  2. Mint multiplier curve
-// =====================================================================
-new Chart(document.getElementById('multChart'), {
-  type: 'line',
-  data: {
-    labels: xLabels,
-    datasets: [
-      {
-        label: 'Mint multiplier on withdraw()',
-        data: sweep.ys_mult,
-        borderColor: '#1F3A93',
-        backgroundColor: 'rgba(31,58,147,0.12)',
-        tension: 0.25,
-        borderWidth: 2,
-        fill: true,
-        pointRadius: 0,
-      },
-      {
-        label: 'Test 25 measured ratio (~11x)',
-        data: sweep.xs.map(_ => 11),
-        borderColor: '#B8860B',
-        borderDash: [6, 4],
-        borderWidth: 1.4,
-        pointRadius: 0,
-        fill: false,
-      },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: 'How much more i6 a withdrawer mints vs. baseline' },
-      legend: { position: 'bottom' },
-      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + 'x' } },
-    },
-    scales: {
-      x: { title: { display: true, text: 'i6 dumped into LP' } },
-      y: { title: { display: true, text: 'Multiplier vs. baseline' }, min: 1, max: 30 },
-    },
-  },
-});
-
-// =====================================================================
-//  3. Composition stacked bar
-// =====================================================================
-const compLabels  = ['Baseline','25k','50k','100k','181,673 (all circ.)','250k','500k','1M','2.5M','5M','10M','25M'];
-const compDumps   = [0, 25_000, 50_000, 100_000, 181_673, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000];
-const compUSDT    = compDumps.map(_ => USDT_LP_BASE);
-const compI6      = compDumps.map(d => I6_LP_BASE + d);
-
-new Chart(document.getElementById('compChart'), {
-  type: 'bar',
-  data: {
-    labels: compLabels,
-    datasets: [
-      { label: 'USDT in LP', data: compUSDT, backgroundColor: '#1E8449' },
-      { label: 'i6 in LP',   data: compI6,   backgroundColor: '#C0392B' },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: 'LP composition after each dump scenario' },
-      legend: { position: 'bottom' },
-      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + Math.round(ctx.parsed.y).toLocaleString() } },
-    },
-    scales: {
-      x: { stacked: false, title: { display: true, text: 'Scenario' } },
-      y: { type: 'logarithmic', title: { display: true, text: 'Reserve (log scale)' } },
-    },
-  },
-});
-
-// =====================================================================
-//  4. 30-day multi-round spiral simulation
-// =====================================================================
-function simulateSpiral({ dailyUsdtWithdraw, recycleRate, days = 30 }) {
-  let i6LP   = I6_LP_BASE + 181_673.141;   // seed: all circulating dumped on day 0
-  let usdtLP = USDT_LP_BASE;
-  let supply = SUPPLY_BASE + 0;             // no new mints yet
-  const spots = [];
-  const supplies = [];
-  for (let d = 0; d <= days; d++) {
-    const spot = usdtLP / i6LP;
-    spots.push(spot);
-    supplies.push(supply);
-    if (d === days) break;
-    // withdraws happen at this spot
-    const minted = dailyUsdtWithdraw / spot;
-    supply += minted;
-    // recycle fraction enters LP next round
-    i6LP += minted * recycleRate;
-  }
-  return { spots, supplies };
+function phaseLabel(step) {
+  if (step === 0) return "seed";
+  if (step === 9999) return "post-inv";
+  if (step <= 9999) return "inv " + step;
+  return "wd " + (step - 10000);
 }
 
-const sim_cons = simulateSpiral({ dailyUsdtWithdraw: 5_000,  recycleRate: 0.25 });
-const sim_mod  = simulateSpiral({ dailyUsdtWithdraw: 15_000, recycleRate: 0.50 });
-const sim_agg  = simulateSpiral({ dailyUsdtWithdraw: 30_000, recycleRate: 0.75 });
-
-const dayLabels = Array.from({length: 31}, (_, i) => 'D' + i);
-
-new Chart(document.getElementById('spiralSpotChart'), {
-  type: 'line',
-  data: {
-    labels: dayLabels,
-    datasets: [
-      { label: 'Conservative (5k/d, 25% recycle)', data: sim_cons.spots, borderColor: '#1E8449', backgroundColor: 'rgba(30,132,73,0.10)', borderWidth: 2, tension: 0.25, pointRadius: 0, fill: false },
-      { label: 'Moderate (15k/d, 50% recycle)',    data: sim_mod.spots,  borderColor: '#B8860B', backgroundColor: 'rgba(184,134,11,0.10)', borderWidth: 2, tension: 0.25, pointRadius: 0, fill: false },
-      { label: 'Aggressive (30k/d, 75% recycle)',  data: sim_agg.spots,  borderColor: '#C0392B', backgroundColor: 'rgba(192,57,43,0.10)',  borderWidth: 2, tension: 0.25, pointRadius: 0, fill: false },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: 'Spot price over 30 days under three withdrawal-pressure scenarios' },
-      legend: { position: 'bottom' },
-      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(4) + ' USDT/i6' } },
-    },
-    scales: {
-      x: { title: { display: true, text: 'Day' } },
-      y: { title: { display: true, text: 'Spot (USDT/i6)' }, min: 0 },
-    },
-  },
-});
-
-new Chart(document.getElementById('spiralSupplyChart'), {
-  type: 'line',
-  data: {
-    labels: dayLabels,
-    datasets: [
-      { label: 'Conservative supply', data: sim_cons.supplies, borderColor: '#1E8449', borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false },
-      { label: 'Moderate supply',    data: sim_mod.supplies,   borderColor: '#B8860B', borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false },
-      { label: 'Aggressive supply',  data: sim_agg.supplies,   borderColor: '#C0392B', borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false },
-      { label: 'Today (596,909)',    data: dayLabels.map(_ => SUPPLY_BASE), borderColor: '#1F3A93', borderDash: [6,4], borderWidth: 1.4, pointRadius: 0, fill: false },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: 'i6 total supply over 30 days (logarithmic)' },
-      legend: { position: 'bottom' },
-      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + Math.round(ctx.parsed.y).toLocaleString() + ' i6' } },
-    },
-    scales: {
-      x: { title: { display: true, text: 'Day' } },
-      y: { type: 'logarithmic', title: { display: true, text: 'i6 supply (log)' } },
-    },
-  },
-});
-
-// =====================================================================
-//  5. Fix simulation
-//      (a) TWAP: spot smoothed via a 6-day moving average (proxy for 30m TWAP)
-//      (b) MAX_SUPPLY ceiling = 1_000_000_000 i6
-//      (c) MAX_TOKENS_PER_USD = 2.0
-// =====================================================================
-function simulateFix({ dailyUsdtWithdraw, recycleRate, days = 30, maxTokensPerUsd = 2.0 }) {
-  let i6LP   = I6_LP_BASE + 181_673.141;
-  let usdtLP = USDT_LP_BASE;
-  let supply = SUPPLY_BASE + 0;
-  const spotHistory = [];
-  const spots = [];
-  const supplies = [];
-  for (let d = 0; d <= days; d++) {
-    const spotInst = usdtLP / i6LP;
-    spotHistory.push(spotInst);
-    // TWAP-ish: 6-day moving average
-    const window = spotHistory.slice(Math.max(0, d - 6));
-    const twap = window.reduce((a,b) => a+b, 0) / window.length;
-    spots.push(twap);
-    supplies.push(supply);
-    if (d === days) break;
-    // mint capped: i6_per_USDT <= maxTokensPerUsd
-    const i6PerUsdt = Math.min(1 / twap, maxTokensPerUsd);
-    const minted = dailyUsdtWithdraw * i6PerUsdt;
-    supply += minted;
-    i6LP += minted * recycleRate;
-  }
-  return { spots, supplies };
+function MetricCard({ label, value, tone }) {
+  return (
+    <div className="stat">
+      <div className="lbl">{label}</div>
+      <div className={"val " + (tone || "")}>{value}</div>
+    </div>
+  );
 }
-const fix_agg = simulateFix({ dailyUsdtWithdraw: 30_000, recycleRate: 0.75 });
 
-new Chart(document.getElementById('fixChart'), {
-  type: 'line',
-  data: {
-    labels: dayLabels,
-    datasets: [
-      { label: 'Spot (TWAP-smoothed, fixed)', yAxisID: 'ySpot',   data: fix_agg.spots,    borderColor: '#1F618D', borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false },
-      { label: 'i6 supply (fixed, capped)',   yAxisID: 'ySupply', data: fix_agg.supplies, borderColor: '#1F3A93', borderWidth: 2, tension: 0.2, pointRadius: 0, fill: false, borderDash: [3,3] },
-      { label: 'Spot (aggressive, broken)',   yAxisID: 'ySpot',   data: sim_agg.spots,    borderColor: '#C0392B', borderWidth: 1.6, tension: 0.2, pointRadius: 0, fill: false },
-      { label: 'i6 supply (aggressive, broken)', yAxisID: 'ySupply', data: sim_agg.supplies, borderColor: '#C0392B', borderWidth: 1.6, tension: 0.2, pointRadius: 0, fill: false, borderDash: [3,3] },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: { display: true, text: 'Fix vs. broken: same aggressive scenario, both curves' },
-      legend: { position: 'bottom' },
-    },
-    scales: {
-      x: { title: { display: true, text: 'Day' } },
-      ySpot:   { position: 'left',  title: { display: true, text: 'Spot (USDT/i6)' }, min: 0 },
-      ySupply: { position: 'right', type: 'logarithmic', title: { display: true, text: 'i6 supply (log)' }, grid: { drawOnChartArea: false } },
-    },
-  },
-});
+function Chart({ title, desc, note, children }) {
+  return (
+    <div className="card">
+      <h3>{title}</h3>
+      <div className="desc">{desc}</div>
+      <div className="chart-wrapper">
+        <ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer>
+      </div>
+      {note ? <div className="layman-card" style={{ marginTop: 10 }}>{note}</div> : null}
+    </div>
+  );
+}
 
+function KpiDescriptionCard() {
+  return (
+    <div className="kpi-card">
+      <h3>📊 Understanding the KPIs &amp; Metrics</h3>
+      <p>
+        Every chart and card on this page uses metrics from a <b>10,000-user on-chain simulation</b> running
+        the real <code>InfinitySixSystem</code> + <code>InfinitySixToken</code> contracts with PancakeSwap V2
+        constant-product AMM math. Here is what each KPI means and why it matters.
+      </p>
+      <div className="kpi-grid">
+        <div className="kpi-item">
+          <div className="kpi-name">Reserve USDT (pool)</div>
+          <div className="kpi-desc">
+            The amount of <b>real USDT</b> locked in the USDT/i6 liquidity pair. When users <code>invest()</code>,
+            60% of their USDT is swapped for i6 via this pair, which <b>adds</b> USDT to the pool.
+            When users sell minted i6 after <code>withdraw()</code>, they <b>remove</b> USDT.
+            <b> If this drops to zero, no further i6→USDT swaps are possible — the pool is dead.</b>
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">Reserve i6 (pool)</div>
+          <div className="kpi-desc">
+            The amount of i6 tokens locked inside the pair. Grows when users sell newly minted i6 into the pool.
+            In a death spiral, this number <b>explodes</b> as infinite minted i6 floods the pool, pushing the
+            price toward zero.
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">Spot Price (USDT/i6)</div>
+          <div className="kpi-desc">
+            The price of 1 i6 in USDT, calculated as <code>reserveUSDT / reserveI6</code>. This is what
+            <code>getSpotPrice()</code> returns on-chain. <b>Critical</b>: <code>withdraw()</code> mints
+            <code>usdtReward × 1e18 / spotPrice</code> i6 — so a lower spot means <b>more</b> i6 minted
+            per dollar of reward. This is the feedback loop that creates the death spiral.
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">i6 Total Supply</div>
+          <div className="kpi-desc">
+            Total number of i6 tokens in existence (pool + wallets + system). Grows via <code>mint()</code>
+            during <code>withdraw()</code>. There is <b>no MAX_SUPPLY cap</b> in the contract (finding C-2),
+            so this can grow <b>without bound</b>. In the WORST case it reaches 2.16 × 10¹⁹.
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">Total USDT Invested</div>
+          <div className="kpi-desc">
+            Sum of all USDT deposited via <code>invest()</code>. In the 10k-user simulation, each user invests
+            100 USDT (MIN_INVESTMENT), plus 50 L1 sponsors invest 100 each = <b>1,005,000 USDT</b> total inflow.
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">Total USDT Extracted</div>
+          <div className="kpi-desc">
+            Sum of USDT obtained by all users after <code>withdraw()</code> (mint i6) then selling that i6 on the pair.
+            If this exceeds Total USDT Invested, the protocol has paid out more than it took in — the shortfall is
+            absorbed by the <b>pool's USDT reserves being drained</b>.
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">Payback Ratio (‰)</div>
+          <div className="kpi-desc">
+            <code>(totalUsdtOut × 1000) / totalUsdtIn</code>. A ratio of <b>1000</b> means users got back
+            exactly what they put in. Above 1000 = the pool subsidized returns. The WORST/DEATH cases show
+            <b>1592‰ (159.2%)</b> — users extracted 59% more USDT than they invested. That excess came from
+            draining the pool.
+          </div>
+        </div>
+        <div className="kpi-item">
+          <div className="kpi-name">Death Spiral Waves</div>
+          <div className="kpi-desc">
+            In the DEATH SPIRAL test, 10k users withdraw in <b>10 waves of 1,000</b> each. Each wave depresses
+            the spot price, causing the next wave's mints to be larger. By Wave 10, the feedback loop produces
+            <b>hyperinflation</b>: 2.16 × 10¹⁹ i6 minted in a single wave, completely draining the pool.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [logSupply, setLogSupply] = useState(true);
+  const [logSpot, setLogSpot] = useState(true);
+
+  const finalBest  = BEST[BEST.length - 1];
+  const finalAvg   = AVG[AVG.length - 1];
+  const finalWorst = WORST[WORST.length - 1];
+
+  return (
+    <div>
+      <h1>Infinity-Six — 10,000 user stress simulation</h1>
+      <div className="sub">
+        <span className="live-pill">LIVE</span>
+        Pool at audit time (DexScreener): <b>595,320 USDT</b> + <b>415,237 i6</b> at <b>1.4337 USDT/i6</b> ($1.19M total liquidity).
+        Simulation uses exact live reserves as the WORST-case seed. BEST = 10× live, AVG = 3× live.
+      </div>
+      <div className="sub">
+        Three scenarios run head-to-head:
+        <span className="pill">BEST = 10× live (5.95M USDT)</span>
+        <span className="pill warn">AVG = 3× live (1.79M USDT)</span>
+        <span className="pill bad">WORST = LIVE (595k USDT)</span>.
+        Death-spiral run uses the live seed and batches withdraws into 10 waves
+        so per-wave damage is visible.
+      </div>
+
+      <KpiDescriptionCard />
+
+      <div className="explainer">
+        <h3>How the death spiral happens — plain English</h3>
+        <p>
+          Think of the pool as a piggy bank with two compartments:
+          one full of <b>USDT (real money)</b> and one full of <b>i6 (the project token)</b>.
+          The price of i6 is decided by how full each compartment is. If USDT goes down
+          or i6 goes up, the price falls. If USDT goes up or i6 goes down, the price rises.
+        </p>
+        <p>
+          When you <b>withdraw</b> from Infinity-Six, the smart contract DOES NOT pay you USDT directly.
+          Instead it <b>creates new i6 tokens out of thin air</b>, hands them to you, and lets you sell
+          them at the pool. The amount of new i6 it creates is calculated as:
+        </p>
+        <div className="step">
+          <code>new i6 = your USDT reward × 1 / current i6 price</code>
+        </div>
+        <p>
+          So when the i6 price goes <b>down</b>, the contract creates <b>more</b> new tokens for the
+          same reward. More tokens hitting the pool push the price <b>even lower</b>. That makes the
+          next person's reward even <b>bigger in token count</b>. Repeat.
+        </p>
+
+        <h3 style={{ marginTop: 18 }}>Step-by-step on the live pool</h3>
+        <ol>
+          <li>Pool starts with <b>595,320 USDT</b> + <b>415,237 i6</b>, price 1.4337 USDT/i6.</li>
+          <li>10,000 users invest $100 each (typical promotional surge).
+              60% of every $100 buys i6 from the pool, pushing the price UP to ~4.69.</li>
+          <li>30 days later, those users qualify for ROI rewards and withdraw.
+              The contract mints NEW i6 for each user, who sells it.</li>
+          <li>First few thousand sells: price drops from 4.69 back toward 1.4.</li>
+          <li>By 6,000 withdrawals: price is below baseline at 1.39.
+              <b>The contract starts minting more i6 per user than during normal times.</b></li>
+          <li>By 8,000 withdrawals: pool USDT is down to 399k, price crashed to 0.29,
+              and the contract mints <b>thousands of i6 per user</b>.</li>
+          <li>Final state: <b>pool USDT drained to 0</b> (26 wei remaining),
+              <b>spot price = 0</b>, <b>supply = 2.16 × 10¹⁹ i6</b> — complete hyperinflation.</li>
+          <li>People who tried to withdraw last get almost nothing — the pool has no USDT left.</li>
+        </ol>
+
+        <h3 style={{ marginTop: 18 }}>Why doesn't the smart contract prevent it?</h3>
+        <ul>
+          <li><b>No supply limit</b> on the i6 token (audit C-2). It can mint infinity.</li>
+          <li><b>No "min tokens I'll accept"</b> on withdraw (audit C-1).
+              Users have no way to refuse a tiny payout from a crashed price.</li>
+          <li><b>No emergency pause</b> (audit L-5). Once it starts, no one can stop it.
+              After the planned ownership renounce, NOTHING can stop it.</li>
+        </ul>
+
+        <p style={{ marginTop: 14 }}>
+          <b>Bottom line:</b> the live pool has $595k USDT. The simulation shows that
+          10,000 small investors going through one ROI cycle completely <b>drains the pool to zero</b>
+          and inflates supply by a factor of 2.6 × 10¹³. This is not a theoretical risk — it is the
+          measured outcome with the real contract code.
+        </p>
+      </div>
+
+      <div className="summary">
+        <MetricCard label="users simulated" value="10,050" />
+        <MetricCard label="invest size each" value="100 USDT" />
+        <MetricCard label="total USDT in" value="1,005,000" />
+        <MetricCard label="run time" value="~12 sec" />
+      </div>
+
+      <h2>Final state — BEST (deep pool, 5.95M / 4.15M = 10× live)</h2>
+      <div className="summary">
+        <MetricCard label="final spot USDT/i6" value={finalBest.spot.toFixed(4)} tone="good" />
+        <MetricCard label="pool USDT after"    value={fmt(finalBest.usdt) + " (-11%)"} />
+        <MetricCard label="i6 total supply"    value={fmt(finalBest.supply) + " (1.14×)"} tone="good" />
+        <MetricCard label="payback ratio"      value="1666‰ (166.6%)" tone="warn" />
+      </div>
+
+      <h2>Final state — AVERAGE (3× live pool, 1.79M / 1.25M)</h2>
+      <div className="summary">
+        <MetricCard label="final spot USDT/i6" value={finalAvg.spot.toFixed(4)} tone="warn" />
+        <MetricCard label="pool USDT after"    value={fmt(finalAvg.usdt) + " (-38%)"} tone="warn" />
+        <MetricCard label="i6 total supply"    value={fmt(finalAvg.supply) + " (1.65×)"} tone="warn" />
+        <MetricCard label="payback ratio"      value="1666‰ (166.6%)" tone="warn" />
+      </div>
+
+      <h2>Final state — WORST (LIVE pool, 595k / 415k)</h2>
+      <div className="summary">
+        <MetricCard label="final spot USDT/i6" value="≈ 0" tone="bad" />
+        <MetricCard label="pool USDT after"    value="26 wei (DRAINED)" tone="bad" />
+        <MetricCard label="i6 total supply"    value="2.16 × 10¹⁹" tone="bad" />
+        <MetricCard label="payback ratio"      value="1592‰ (159.2%)" tone="bad" />
+      </div>
+
+      <div className="note">
+        <span className="pill bad">C-1</span>
+        <span className="pill bad">C-2</span>
+        With <b>live liquidity</b>, 10k withdraws + dumps collapsed spot from 4.69 to
+        <b> absolute zero</b> and inflated supply to 2.16 × 10¹⁹. The system never
+        reverted because there is no <code>minTokensOut</code> on withdraw and no
+        <code>MAX_SUPPLY</code> cap on the token. Users extracted 1.6M USDT from
+        a 1.005M USDT inflow — the 595k shortfall was drained from the pool.
+      </div>
+
+      <div className="controls">
+        <label>
+          <input type="checkbox" checked={logSpot} onChange={(e) => setLogSpot(e.target.checked)} /> spot log scale
+        </label>
+        <label>
+          <input type="checkbox" checked={logSupply} onChange={(e) => setLogSupply(e.target.checked)} /> supply log scale
+        </label>
+      </div>
+
+      <div className="grid">
+
+        <Chart title="Spot price USDT / i6"
+               desc="BEST stays 1.00–1.73. AVG peaks at 2.45 then falls to 0.39. WORST pumps to 4.69 then crashes to 0 (complete collapse)."
+               note={<><b>In plain words:</b> this is the price 1 i6 token sells for.
+                 On a deep pool (blue) the price stays close to $1. On the LIVE pool (red)
+                 the price first pumps because everyone is buying via invest, then
+                 <b> crashes from $4.69 to absolute zero</b> when withdrawers dump their newly-minted i6.</>}>
+          <LineChart data={mergedSeries(BEST, AVG, WORST, "spot")} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="step" stroke="#7d8590" tickFormatter={phaseLabel} />
+            <YAxis stroke="#7d8590" scale={logSpot ? "log" : "linear"}
+                   domain={logSpot ? [0.0001, 5] : [0, 5]} allowDataOverflow tickFormatter={(v) => v.toFixed(3)} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }}
+                     formatter={(v) => Number(v).toFixed(4)} />
+            <Legend />
+            <ReferenceLine x={9999} stroke="#d29922" strokeDasharray="4 4" label={{ value: "+30d mature", fill: "#d29922", fontSize: 11 }} />
+            <Line type="monotone" dataKey="BEST"  stroke="#58a6ff" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="AVG"   stroke="#d29922" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="WORST" stroke="#f85149" strokeWidth={2} dot={false} />
+          </LineChart>
+        </Chart>
+
+        <Chart title="Pool USDT reserve"
+               desc="BEST drains 11%. AVG drains 38%. WORST drains 100% — 0 USDT remaining."
+               note={<><b>In plain words:</b> this is the real-money side of the pool. It first goes UP because
+                 invests put 60% of the deposit into USDT. Then during withdraw, every sell takes USDT OUT.
+                 On the LIVE pool (red) the USDT is <b>completely drained to zero</b> — from $595k to nothing.
+                 People who try to withdraw last have nothing to receive.</>}>
+          <LineChart data={mergedSeries(BEST, AVG, WORST, "usdt")} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="step" stroke="#7d8590" tickFormatter={phaseLabel} />
+            <YAxis stroke="#7d8590" tickFormatter={fmt} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} formatter={fmt} />
+            <Legend />
+            <ReferenceLine x={9999} stroke="#d29922" strokeDasharray="4 4" />
+            <Line type="monotone" dataKey="BEST"  stroke="#58a6ff" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="AVG"   stroke="#d29922" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="WORST" stroke="#f85149" strokeWidth={2} dot={false} />
+          </LineChart>
+        </Chart>
+
+        <Chart title="Pool i6 reserve"
+               desc="BEST grows 28%. AVG grows 2.3×. WORST balloons to 1.56 × 10¹⁵ i6 as withdrawers dump."
+               note={<><b>In plain words:</b> this is the OTHER side of the pool — the i6 tokens.
+                 Withdrawers dump their freshly-minted i6 here. On the LIVE pool (red), the i6
+                 side balloons from 415k to <b>1.56 quadrillion tokens</b> because withdrawers
+                 keep flooding it with newly-minted i6. The pool is being stuffed with worthless tokens
+                 while the USDT is being drained out.</>}>
+          <LineChart data={mergedSeries(BEST, AVG, WORST, "i6")} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="step" stroke="#7d8590" tickFormatter={phaseLabel} />
+            <YAxis stroke="#7d8590" tickFormatter={fmt} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} formatter={fmt} />
+            <Legend />
+            <ReferenceLine x={9999} stroke="#d29922" strokeDasharray="4 4" />
+            <Line type="monotone" dataKey="BEST"  stroke="#58a6ff" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="AVG"   stroke="#d29922" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="WORST" stroke="#f85149" strokeWidth={2} dot={false} />
+          </LineChart>
+        </Chart>
+
+        <Chart title="i6 totalSupply (mint inflation)"
+               desc="BEST: 1.14× growth. AVG: 1.65× growth. WORST: 2.6 × 10¹³× growth — no supply cap."
+               note={<><b>In plain words:</b> total number of i6 tokens in existence. The contract is
+                 allowed to print new tokens every time someone withdraws. On the LIVE pool (red),
+                  supply <b>grows from 830k to 2.16 × 10¹⁹ i6</b>. Each new token cuts the value of every old token.
+                 If you hold i6, every new mint dilutes your share. There is no maximum supply
+                 cap in the contract code (audit finding C-2).</>}>
+          <LineChart data={mergedSeries(BEST, AVG, WORST, "supply")} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="step" stroke="#7d8590" tickFormatter={phaseLabel} />
+            <YAxis stroke="#7d8590" scale={logSupply ? "log" : "linear"}
+                   domain={logSupply ? [1e5, 6e7] : [0, 14e6]} allowDataOverflow tickFormatter={fmt} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} formatter={fmt} />
+            <Legend />
+            <ReferenceLine x={9999} stroke="#d29922" strokeDasharray="4 4" />
+            <Line type="monotone" dataKey="BEST"  stroke="#58a6ff" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="AVG"   stroke="#d29922" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="WORST" stroke="#f85149" strokeWidth={2} dot={false} />
+          </LineChart>
+        </Chart>
+
+      </div>
+
+      <h2>Death spiral — wave-by-wave on the LIVE-seeded pool</h2>
+      <div className="sub">
+        After 10k invests + 30d mature, withdraws are batched into 10 waves of 1,000.
+        Each wave mints i6 against the spot price left by the previous wave, then dumps.
+      </div>
+      <div className="layman-card" style={{ marginBottom: 16 }}>
+        <b>Read these charts like this:</b> imagine 10,000 customers lining up to withdraw their
+        rewards. We let them go in <b>10 groups of 1,000</b>. The charts below show what each group
+        does to the system. Look at how Group 1 is harmless, Group 5 is uncomfortable, and Group 10
+        is catastrophic. The contract NEVER refuses any of them — it just makes the damage worse
+        each wave.
+      </div>
+
+      <div className="grid">
+        <Chart title="i6 minted per wave (log scale)"
+               desc="Geometric explosion: wave 1 mints ~6k i6, wave 9 mints ~2M i6, wave 10 mints 2.16 × 10¹⁹ i6."
+               note={<><b>In plain words:</b> how many brand-new i6 tokens the contract created for each group
+                 of 1,000 withdrawers. Group 1 got 6,000 tokens. Group 9 got <b>2 million tokens</b>.
+                  Group 10 got <b>21.6 quintillion</b> tokens — a number so large it breaks every scale.
+                 Same reward amount, way more tokens, because the price kept falling.
+                 This is the printing press running faster the more it runs.</>}>
+          <BarChart data={WAVES} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="wave" stroke="#7d8590" tickFormatter={(v) => "w" + v} />
+            <YAxis stroke="#7d8590" scale="log" domain={[1000, 1e8]} allowDataOverflow tickFormatter={fmt} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }}
+                     formatter={(v) => v > 1e10 ? Number(v).toExponential(2) : fmt(v)} />
+            <Bar dataKey="minted" fill="#f85149" />
+          </BarChart>
+        </Chart>
+
+        <Chart title="USDT pulled out of pool per wave"
+               desc="USDT extraction peaks then plateaus (~237k per wave) because the pool runs empty."
+               note={<><b>In plain words:</b> how much real money (USDT) each group of 1,000 customers got out.
+                 Group 1 took $27k. Groups 7-9 each take about $237k — they STOP getting more
+                 because <b>the pool is running empty</b>. Wave 10 takes the final $163k, leaving
+                 essentially nothing behind.</>}>
+          <BarChart data={WAVES} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="wave" stroke="#7d8590" tickFormatter={(v) => "w" + v} />
+            <YAxis stroke="#7d8590" tickFormatter={fmt} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} formatter={fmt} />
+            <Bar dataKey="pulled" fill="#58a6ff" />
+          </BarChart>
+        </Chart>
+
+        <Chart title="End-of-wave spot price (log scale)"
+               desc="Spot collapses from 4.53 (wave 1) to ≈ 0 (wave 10). Each halving roughly doubles next wave's mint."
+               note={<><b>In plain words:</b> the price of i6 after each group finishes. Each group
+                 drives the price LOWER, which forces the next group to mint MORE tokens for the same
+                 reward. By wave 10 the price is zero. The chart uses a log scale so the
+                 collapse is visible — on a normal scale you would see nothing after wave 7.</>}>
+          <LineChart data={WAVES} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="wave" stroke="#7d8590" tickFormatter={(v) => "w" + v} />
+            <YAxis stroke="#7d8590" scale="log" domain={[0.0001, 5]} allowDataOverflow tickFormatter={(v) => v < 0.01 ? v.toExponential(1) : v.toFixed(2)} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} formatter={(v) => Number(v).toFixed(4)} />
+            <Line type="monotone" dataKey="spot" stroke="#d29922" strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </Chart>
+
+        <Chart title="Cumulative drain vs cumulative mint"
+               desc="Cumulative i6 minted (red) explodes; cumulative USDT pulled (blue) plateaus at 1.6M because the pool is empty."
+               note={<><b>In plain words:</b> running totals as the waves go through. The BLUE line is the
+                 running total of USDT extracted — it flattens after wave 7 because there is no more
+                 USDT to take. The RED bars are the running total of i6 tokens printed — they keep
+                 growing exponentially because the printing press never stops.
+                 <b> Real money flat, fake tokens exploding — this is the death spiral.</b></>}>
+          <ComposedChart data={cumulative(WAVES)} margin={{ top: 6, right: 12, left: 6, bottom: 6 }}>
+            <CartesianGrid stroke="#30363d" strokeDasharray="3 3" />
+            <XAxis dataKey="wave" stroke="#7d8590" tickFormatter={(v) => "w" + v} />
+            <YAxis yAxisId="left"  stroke="#f85149" scale="log" domain={[1000, 1e8]} allowDataOverflow tickFormatter={fmt} />
+            <YAxis yAxisId="right" orientation="right" stroke="#58a6ff" tickFormatter={fmt} />
+            <Tooltip contentStyle={{ background: "#161b22", border: "1px solid #30363d" }} formatter={fmt} />
+            <Legend />
+            <Bar  yAxisId="left"  dataKey="cumMinted" fill="#f85149" name="cum i6 minted (log)" />
+            <Line yAxisId="right" type="monotone" dataKey="cumPulled" stroke="#58a6ff" strokeWidth={2} dot={{ r: 3 }} name="cum USDT pulled" />
+          </ComposedChart>
+        </Chart>
+      </div>
+
+      <div className="explainer">
+        <h3>Final summary in 5 lines a 12-year-old can read</h3>
+        <ol>
+          <li>The pool today has about <b>$595,320 USDT</b> backing the i6 token.</li>
+          <li>When users withdraw, the contract <b>prints brand-new i6 tokens</b> for them.</li>
+          <li>Those new tokens get dumped into the pool, which drops the price.</li>
+          <li>Lower price means the contract prints <b>even more tokens</b> next time — it speeds up by itself.</li>
+          <li>Within 10,000 ordinary withdraws, the pool's USDT is <b>completely drained to zero</b> and the price
+              <b>crashes to zero</b>. Late withdrawers get nothing.</li>
+        </ol>
+        <p style={{ marginTop: 12 }}>
+          The fix that closes both problems before the planned ownership renounce:
+        </p>
+        <ul>
+          <li>Add a <b>"minimum tokens I'll accept"</b> argument on withdraw, so users can refuse a bad payout.</li>
+          <li>Add a <b>maximum supply cap</b> on the i6 token so the printer cannot run forever.</li>
+        </ul>
+        <p style={{ marginTop: 12 }}>
+          Both are small code changes. Once ownership is renounced, neither can ever be added.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function mergedSeries(best, avg, worst, key) {
+  const map = new Map();
+  for (const r of best)  map.set(r.step, { step: r.step, BEST:  r[key] });
+  for (const r of avg) {
+    const existing = map.get(r.step) || { step: r.step };
+    existing.AVG = r[key];
+    map.set(r.step, existing);
+  }
+  for (const r of worst) {
+    const existing = map.get(r.step) || { step: r.step };
+    existing.WORST = r[key];
+    map.set(r.step, existing);
+  }
+  return Array.from(map.values()).sort((a, b) => a.step - b.step);
+}
+
+function cumulative(waves) {
+  let m = 0, p = 0;
+  return waves.map((w) => {
+    m += w.minted;
+    p += w.pulled;
+    return { wave: w.wave, cumMinted: Math.min(m, 1e8), cumPulled: p };
+  });
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(<App />);
 </script>
-
 </body>
 </html>
