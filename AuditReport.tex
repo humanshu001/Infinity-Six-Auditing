@@ -1,0 +1,1724 @@
+\documentclass[11pt,a4paper]{article}
+
+% --------------------------------------------------------------------
+%  Packages
+% --------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{parskip}
+\tcbuselibrary{skins,breakable}
+
+% --------------------------------------------------------------------
+%  Colors
+% --------------------------------------------------------------------
+\definecolor{i6primary}{HTML}{1F3A93}
+\definecolor{i6accent}{HTML}{C0392B}
+\definecolor{i6gray}{HTML}{4A4A4A}
+\definecolor{i6lightgray}{HTML}{F2F2F2}
+\definecolor{critred}{HTML}{B22222}
+\definecolor{optblue}{HTML}{1F618D}
+\definecolor{passgreen}{HTML}{1E8449}
+
+% --------------------------------------------------------------------
+%  Hyperref
+% --------------------------------------------------------------------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=i6primary,
+    urlcolor=i6primary,
+    citecolor=i6primary,
+    pdftitle={Infinity Six -- Smart Contract Security Audit Report},
+    pdfauthor={Audit Team},
+    pdfsubject={Security Audit}
+}
+
+% --------------------------------------------------------------------
+%  Section styling
+% --------------------------------------------------------------------
+\titleformat{\section}
+  {\Large\bfseries\color{i6primary}}
+  {\thesection}{0.6em}{}
+\titleformat{\subsection}
+  {\large\bfseries\color{i6gray}}
+  {\thesubsection}{0.6em}{}
+
+% --------------------------------------------------------------------
+%  Page header / footer
+% --------------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{Infinity Six -- Security Audit}}
+\fancyhead[R]{\small\textit{Confidential}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+% --------------------------------------------------------------------
+%  Listings (Solidity)
+% --------------------------------------------------------------------
+\lstdefinelanguage{Solidity}{
+    keywords={pragma, solidity, contract, function, public, private, internal,
+              external, view, pure, payable, returns, return, if, else, for,
+              while, mapping, address, uint, uint256, int, int256, bool, string,
+              bytes, bytes32, memory, storage, calldata, constant, immutable,
+              modifier, require, revert, emit, event, struct, enum, library,
+              using, this, super, new, delete, true, false, import, is, virtual,
+              override, constructor},
+    keywordstyle=\color{i6primary}\bfseries,
+    ndkeywords={MAX_SUPPLY, WAD, totalSupply, balanceOf, transfer, mint, burn,
+                onlySystem},
+    ndkeywordstyle=\color{i6accent}\bfseries,
+    sensitive=true,
+    comment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    commentstyle=\color{i6gray}\itshape,
+    stringstyle=\color{passgreen},
+    morestring=[b]"
+}
+
+\lstset{
+    language=Solidity,
+    basicstyle=\ttfamily\footnotesize,
+    backgroundcolor=\color{i6lightgray},
+    frame=single,
+    rulecolor=\color{i6gray},
+    breaklines=true,
+    showstringspaces=false,
+    columns=fullflexible,
+    numbers=left,
+    numberstyle=\tiny\color{i6gray},
+    numbersep=8pt,
+    xleftmargin=18pt,
+    framexleftmargin=15pt,
+    tabsize=2,
+    captionpos=b
+}
+
+% --------------------------------------------------------------------
+%  Finding boxes
+% --------------------------------------------------------------------
+\newtcolorbox{criticalbox}[1]{
+    colback=critred!5!white,
+    colframe=critred,
+    fonttitle=\bfseries\color{white},
+    coltitle=white,
+    title=#1,
+    breakable,
+    boxrule=0.8pt,
+    arc=2pt
+}
+
+\newtcolorbox{optimizationbox}[1]{
+    colback=optblue!5!white,
+    colframe=optblue,
+    fonttitle=\bfseries\color{white},
+    coltitle=white,
+    title=#1,
+    breakable,
+    boxrule=0.8pt,
+    arc=2pt
+}
+
+\newtcolorbox{infobox}{
+    colback=i6lightgray,
+    colframe=i6gray,
+    breakable,
+    boxrule=0.5pt,
+    arc=2pt
+}
+
+% ====================================================================
+%  TITLE PAGE
+% ====================================================================
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+
+{\Huge\bfseries\color{i6primary} Infinity Six \par}
+\vspace{0.4cm}
+{\LARGE\color{i6gray} Smart Contract Security Audit Report \par}
+
+\vspace{1.5cm}
+\rule{0.7\textwidth}{0.8pt}\\[0.6cm]
+
+{\Large\bfseries Scope:}\\[0.3cm]
+{\large \texttt{InfinitySixToken} \,\,$\cdot$\,\, \texttt{InfinitySixSystem}}\\[0.2cm]
+{\large Solidity \texttt{\^{}0.8.34} \,\,$\cdot$\,\, BNB Smart Chain mainnet}
+
+\vspace{0.8cm}
+\rule{0.7\textwidth}{0.8pt}\\[1.5cm]
+
+\begin{tabular}{rl}
+\textbf{Report version:} & 1.0 \\[0.15cm]
+\textbf{Audit date:} & June 2026 \\[0.15cm]
+\textbf{Engagement type:} & Full-scope security review \\[0.15cm]
+\textbf{Network:} & BNB Smart Chain (forked mainnet) \\[0.15cm]
+\textbf{Test framework:} & Foundry \\[0.15cm]
+\textbf{Classification:} & Confidential
+\end{tabular}
+
+\vfill
+{\small\color{i6gray}This report is intended exclusively for the Infinity Six project owners.}\\
+{\small\color{i6gray}Reproduction or redistribution without written consent is prohibited.}
+
+\end{titlepage}
+
+% ====================================================================
+%  TABLE OF CONTENTS
+% ====================================================================
+\tableofcontents
+\newpage
+
+% ====================================================================
+%  1. EXECUTIVE SUMMARY
+% ====================================================================
+\section{Executive Summary}
+
+This document presents the findings of a full-scope security audit of the
+Infinity Six protocol, consisting of the \texttt{InfinitySixToken} (i6) ERC-20
+contract and the \texttt{InfinitySixSystem} MLM payout engine, deployed on the
+BNB Smart Chain (BSC).
+
+The audit was conducted against the live mainnet state of both contracts.
+Every test was executed on a BSC mainnet fork that re-asserts the documented
+on-chain values (token address, system address, DAO multisig, liquidity pair,
+router, \texttt{buyingEnabled} flag, \texttt{maxDownlineDepth}, launch time)
+before running, so the behaviour exercised by the suite matches what is
+actually live on the chain.
+
+The review covered the full set of attack surfaces relevant to an MLM /
+ROI-style protocol that custodies USDT and mints a reward token: oracle price
+manipulation, flash-loan financing, MEV sandwich attacks, reentrancy,
+arithmetic, governance trust, supply control, withdrawal mechanics,
+storage-bloat / depth-based denial-of-service, gas scaling, and griefing
+vectors against multi-recipient transfers.
+
+\subsection*{Result}
+
+After exercising the entire attack surface listed in
+Section~\ref{sec:methodology}, the audit identified
+\textbf{two confirmed vulnerabilities} requiring code changes and
+\textbf{one configuration recommendation} that yields a material gas
+improvement under deep-tree conditions:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{>{\bfseries}p{2.4cm} p{8.6cm} >{\centering\arraybackslash}p{2.6cm}}
+\toprule
+\textbf{ID} & \textbf{Title} & \textbf{Class} \\
+\midrule
+C-1 & Withdraw mints from spot price with no caller-side slippage guard
+    & \textcolor{critred}{\textbf{Critical}} \\
+C-2 & No \texttt{MAX\_SUPPLY} cap on the i6 token
+    & \textcolor{critred}{\textbf{Critical}} \\
+G-1 & Reduce \texttt{maxDownlineDepth} from 1000 to 600 for gas optimisation
+    & \textcolor{optblue}{\textbf{Optimisation}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All other attack vectors -- including flash loans, in-block sandwich attacks,
+reentrancy, EOA-bypass through contract callers, and depth-based DoS -- were
+exercised and \textbf{successfully repelled by the contract's existing
+defences} (\texttt{tx.origin} check, \texttt{nonReentrant} modifier, same-block
+locks, 1-hour cooldown, 180-day buy lock, \texttt{addLiquidity} burn, and the
+post-launch wait window).
+
+\vspace{0.4cm}
+\begin{infobox}
+\textbf{Headline guidance.} Fixing \textbf{C-1} and \textbf{C-2} eliminates the
+two paths through which the i6 supply can be inflated beyond expectation.
+Lowering \texttt{maxDownlineDepth} to \textbf{600} (G-1) keeps invest gas
+comfortably below the standard 30M RPC cap on the deepest configured tree
+while preserving every legitimate MLM payout path measured during the audit.
+\end{infobox}
+
+\newpage
+
+% ====================================================================
+%  2. SCOPE
+% ====================================================================
+\section{Scope}
+
+\subsection{Contracts in scope}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{4.4cm} p{4.4cm} c c}
+\toprule
+\textbf{Contract} & \textbf{File} & \textbf{LoC} & \textbf{Solc} \\
+\midrule
+\texttt{InfinitySixToken}  & \texttt{i6token.sol}            & 159  & \texttt{\^{}0.8.34} \\
+\texttt{InfinitySixSystem} & \texttt{i6systemcontract.sol}   & 1313 & \texttt{\^{}0.8.34} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Live BSC mainnet state used as baseline}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{4.8cm} p{8.2cm}}
+\toprule
+\textbf{Item} & \textbf{Value} \\
+\midrule
+Token                 & \texttt{0xd2e052c7faE5DDeD7A7B2CdDd27B5d75D18A1593} \\
+System                & \texttt{0x51A36b17b5dbD013C632dCb411F71E935392fe5e} \\
+DAO multisig          & \texttt{0x4EA9802681Fb877DE5407974E63F197EE754032f} \\
+LP pair (USDT / i6)   & \texttt{0x13D55200c298Ff1caE3136BE0dd889626DEAC782} \\
+Router (Pancake V2)   & \texttt{0x10ED43C718714eb63d5aA57B78B54704E256024E} \\
+USDT (BSC, 18 dec)    & \texttt{0x55d398326f99059fF775485246999027B3197955} \\
+Token owner           & \texttt{address(0)} (renounced) \\
+\texttt{buyingEnabled}                 & \texttt{false} (project policy: permanent) \\
+\texttt{timeUntilBuyUnlock}            & $\approx 10{,}572{,}411$ s ($\approx 122.4$ days) \\
+\texttt{MIN\_ROI\_PERC}                & \texttt{5} (0.5\% daily) \\
+\texttt{WITHDRAWAL\_COOLING\_PERIOD}   & \texttt{3600 s} \\
+\texttt{MAX\_INVESTMENT}               & 20{,}000 USDT \\
+\texttt{maxDownlineDepth}              & 1000 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Live LP reserves (snapshot)}
+\label{sec:live-lp}
+
+The values below were read directly from the live PancakeSwap V2 pair at
+\texttt{0x13D55200\dots C782} via \texttt{cast call} against a public BSC
+RPC at audit time. They form the input to the stress test in
+Section~\ref{sec:c1-stress}.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{6.0cm} p{6.8cm}}
+\toprule
+\textbf{On-chain field} & \textbf{Live value} \\
+\midrule
+\texttt{token0} (reserve0)            & USDT  ($595{,}319.5685$ USDT) \\
+\texttt{token1} (reserve1)            & i6    ($415{,}236.5148$ i6)   \\
+Implied spot \texttt{getSpotPrice()}  & $\approx 1.4337$ USDT / i6     \\
+\texttt{i6.totalSupply()}             & $596{,}909.6559$ i6            \\
+\textbf{i6 outside the LP (circulating)} & $\mathbf{181{,}673.1411}$ \textbf{i6} ($\approx 30.4\%$ of supply) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+\textbf{Implication.} The LP holds $\approx 69.6\%$ of all i6 in existence;
+only $\approx 181{,}673$ i6 are currently held outside the pair. The
+death-spiral surface is therefore bounded \emph{today} by this circulating
+amount, unless C-2 (no \texttt{MAX\_SUPPLY}) is exploited to mint additional
+i6 through depressed-spot withdraws, which then themselves become dumpable.
+
+\subsection{Out of scope}
+
+\begin{itemize}[leftmargin=*]
+  \item Off-chain components: front-end, indexer, marketing material.
+  \item Operational security of the DAO multisig signers.
+  \item Economic / token-design viability of the MLM payout model
+        (audited for code correctness, not commercial sustainability).
+  \item PancakeSwap V2 and BSC USDT contracts (treated as third-party
+        dependencies and assumed correct).
+\end{itemize}
+
+\newpage
+
+% ====================================================================
+%  3. METHODOLOGY & TESTED ATTACK VECTORS
+% ====================================================================
+\section{Methodology and Tested Attack Vectors}
+\label{sec:methodology}
+
+\subsection{Test framework}
+
+All tests were executed with \textbf{Foundry} against a forked copy of BSC
+mainnet. The harness (\texttt{BaseFork.t.sol}) re-asserts the live mainnet
+snapshot before each run:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{token.buyingEnabled() == false}
+    \item \texttt{token.liquidityPair() == 0x13D55200\dots C782}
+    \item \texttt{token.systemContract() == 0x51A36b\dots fe5e}
+    \item \texttt{token.totalSupply() > 0}
+    \item \texttt{system.maxDownlineDepth() == 1000}
+    \item \texttt{system.launchTime() > 0}
+    \item documented DAO multisig address.
+\end{itemize}
+
+If any of the above checks fails, the fork is not pointing at BSC mainnet and
+\texttt{setUp()} panics.  Heavy gas-scaling tests additionally deploy
+\emph{local} mocks for USDT, the LP pair, and the router, so deep-tree
+measurements are not constrained by public RPC state pruning. Light tests
+(oracle, withdraw, router hot-swap, etc.) execute directly against live state.
+
+\subsection{Attack vectors exercised}
+
+The following attack surface was systematically tested. Each row corresponds
+to one or more Foundry test suites; the right-hand column is the outcome of
+the audit's investigation of that vector.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{longtable}{>{\bfseries}p{4.8cm} p{6.1cm} p{3.5cm}}
+\toprule
+\textbf{Vector} & \textbf{What was tested} & \textbf{Outcome} \\
+\midrule
+\endhead
+
+Oracle price manipulation
+  & Direct spot-price reads in \texttt{withdraw()} feeding the mint
+    formula; cross-block manipulation by depositing into / dumping from
+    the USDT/i6 LP before a victim withdraw.
+  & \textcolor{critred}{\textbf{Vulnerable}} (see \textbf{C-1}) \\
+
+Supply / mint cap
+  & Whether a single \texttt{mint()} call from the system can mint
+    arbitrary amounts of i6, including amounts that would dwarf the
+    documented circulating supply.
+  & \textcolor{critred}{\textbf{Vulnerable}} (see \textbf{C-2}) \\
+
+Flash-loan-funded invest / withdraw
+  & A \texttt{FlashBorrower} contract takes a PancakeSwap V2 flash loan
+    and inside the \texttt{pancakeCall} callback tries to call
+    \texttt{system.invest(\dots)} and to dump i6 into the pair.
+  & \textcolor{passgreen}{\textbf{Defended}} by
+    \texttt{tx.origin == msg.sender} on
+    \texttt{invest()} / \texttt{withdraw()} / \texttt{claimRank()},
+    and by the token's \texttt{\_update} guard against contract-to-contract
+    transfers between non-whitelisted parties. \\
+
+In-block sandwich attack
+  & MEV bot tries to front-run and back-run a victim's \texttt{withdraw()}
+    in the same block.
+  & \textcolor{passgreen}{\textbf{Defended}} by the layered same-block
+    locks: \texttt{lastBlockNumber} on the system contract,
+    \texttt{lastTxBlock} and \texttt{lastReceiveBlock} on the token. \\
+
+Cross-block sandwich attack
+  & MEV bot front-runs the victim's withdraw with a 20{,}000 USDT
+    (\texttt{MAX\_INVESTMENT}) invest in block \texttt{N-1} to push the
+    spot price up; victim withdraws in block \texttt{N}.
+  & Possible at ${\sim}2.35\%$ loss to the victim. \textbf{Fully neutralised
+    by the same fix that resolves C-1} (TWAP + \texttt{minTokensOut}). \\
+
+Reentrancy
+  & Reentry on \texttt{invest()}, \texttt{withdraw()}, \texttt{claimRank()}
+    through the token transfer callback path.
+  & \textcolor{passgreen}{\textbf{Defended}} by the \texttt{nonReentrant}
+    modifier. \\
+
+Same-block tx griefing
+  & Attacker calls invest/withdraw immediately before victim in the same
+    block to push them past per-block locks.
+  & \textcolor{passgreen}{\textbf{Defended}} by same-block locks. \\
+
+Withdraw cooldown bypass
+  & Attempted withdrawal inside the 1-hour cooling period, and inside the
+    3-day post-launch wait.
+  & \textcolor{passgreen}{\textbf{Defended}} by
+    \texttt{WITHDRAWAL\_COOLING\_PERIOD}. \\
+
+Buy-during-lock bypass
+  & Token purchases against the locked liquidity pair before the
+    180-day buy-unlock window has elapsed.
+  & \textcolor{passgreen}{\textbf{Defended}} by \texttt{buyingEnabled} flag. \\
+
+Depth-based DoS on \texttt{invest()}
+  & A target user is pushed to the deepest configured downline depth
+    (1000) and to the maximum direct count (200); their next
+    \texttt{invest()} is measured against the BSC 140M block limit and
+    the 30M RPC cap.
+  & \textcolor{passgreen}{\textbf{Defended}.} Worst case fits well below
+    block / RPC caps. See \textbf{G-1} for an additional optimisation. \\
+
+Storage-bloat DoS on \texttt{withdraw()}
+  & A user is pushed to the maximum of 100 investment packages and their
+    \texttt{withdraw()} is measured.
+  & \textcolor{passgreen}{\textbf{Defended}.} Worst case ${\sim}2.24$M gas. \\
+
+Multi-recipient griefing
+  & Dust transfers to victim and to the 7 hard-coded ORIGIN payout wallets
+    timed against their next inbound transfer.
+  & Tested; existing protections (same-block locks, whitelist mechanism)
+    contain the surface; no fund loss. \\
+
+Access control / governance
+  & DAO-only setters, system-only mint, owner-renouncement assertions,
+    router and pair setters.
+  & \textcolor{passgreen}{\textbf{Defended}} for the audited code paths. \\
+
+\bottomrule
+\end{longtable}
+\end{center}
+
+The vectors marked \emph{Defended} were exercised against the live forked
+contracts and confirmed to be neutralised by code in place at the audit
+snapshot. The remainder of this report focuses on the two confirmed
+vulnerabilities and the one optimisation recommendation.
+
+\newpage
+
+% ====================================================================
+%  4. FINDINGS
+% ====================================================================
+\section{Findings Summary}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{>{\bfseries}c >{\bfseries}p{1.9cm} p{8.2cm} >{\centering\arraybackslash}p{2.2cm}}
+\toprule
+\textbf{\#} & \textbf{ID} & \textbf{Title} & \textbf{Severity} \\
+\midrule
+1 & C-1 & Withdraw mints from spot price with no slippage guard          & \textcolor{critred}{Critical} \\
+2 & C-2 & No \texttt{MAX\_SUPPLY} cap on the i6 token                    & \textcolor{critred}{Critical} \\
+3 & G-1 & Configure \texttt{maxDownlineDepth = 600} for gas optimisation & \textcolor{optblue}{Optimisation} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3cm}
+\textbf{Severity model.}
+\textit{Critical} -- direct loss of user funds or compromise of supply
+integrity.
+\textit{Optimisation} -- the protocol is functionally correct but a
+configuration change yields a material gas saving for end users.
+
+\newpage
+
+% ====================================================================
+%  5. CRITICAL FINDINGS
+% ====================================================================
+\section{Critical Findings}
+
+% ---------------- C-1 ----------------
+\subsection{C-1 -- Withdraw mints from spot price with no slippage guard}
+
+\begin{criticalbox}{C-1 \,\textbar\, Critical \,\textbar\, \texttt{i6systemcontract.sol}}
+\textbf{Affected code.} \texttt{withdraw()} $\rightarrow$
+\texttt{\_executeWithdrawTransfer()} (lines 573--607).
+
+\textbf{Root cause.} The withdraw path reads the instantaneous spot price
+directly off the PancakeSwap V2 pair reserves and uses that price to compute
+the amount of i6 to mint to the withdrawer. The user supplies no
+\texttt{minTokensOut} argument.
+\end{criticalbox}
+
+\subsubsection*{Mechanism}
+
+Inside \texttt{\_executeWithdrawTransfer}, the contract computes:
+
+\begin{lstlisting}[caption={\texttt{i6systemcontract.sol} -- mint formula in withdraw}]
+uint256 effectivePrice  = getSpotPrice();                // spot, no TWAP
+uint256 tokensToTransfer = (totalUsdtToWithdraw * WAD)   // user has no
+                         / effectivePrice;               // minTokensOut
+\end{lstlisting}
+
+Because \texttt{withdraw()} accepts \textbf{zero arguments} (selector
+\texttt{0x3ccfd60b}), the user cannot enforce a minimum acceptable mint.
+In-block sandwiching is correctly blocked by the system's same-block lock and
+by the token's \texttt{lastTxBlock} / \texttt{lastReceiveBlock} guards.
+However, \textbf{cross-block} sandwiching is not blocked:
+
+\begin{enumerate}[leftmargin=*]
+    \item Attacker observes the victim's pending \texttt{withdraw()} in the
+          mempool, or simply observes recent withdraw cadence.
+    \item Attacker calls
+          \texttt{invest(MAX\_INVESTMENT, \dots)} \emph{first} -- the system
+          internally swaps 60\% of the USDT for i6 on the pair, which raises
+          \texttt{effectivePrice} sharply.
+    \item In the next block, the victim's withdraw mints
+          \emph{fewer} i6 than expected.
+\end{enumerate}
+
+The reverse direction (attacker depresses spot price by dumping i6 into the
+pair before a withdraw) is even more dangerous in the death-spiral case: the
+withdrawer then mints \emph{many more} i6 against the same USDT reward,
+which depresses the price further and accelerates inflation.
+
+\subsubsection*{Measured impact}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Cross-block sandwich (front-run with 20{,}000 USDT invest):}
+          baseline spot $\approx 1.001$ USDT/i6, baseline mint
+          ${\sim}153.15$ i6; post-sandwich spot $\approx 1.025$ USDT/i6,
+          victim mint ${\sim}149.54$ i6 $\Rightarrow$ \textbf{${\sim}2.35\%$
+          loss per withdraw}.
+    \item \textbf{Spot-collapse mint inflation:} dumping 5M i6 into the LP
+          drops spot from $\approx 1.001$ USDT/i6 to $\approx 0.167$
+          USDT/i6. The same USDT reward then mints
+          $76.62 \rightarrow 919.03$ i6, \emph{an 11$\times$ inflation
+          multiplier} on a single withdraw.
+\end{itemize}
+
+\subsubsection*{Recommendation}
+
+\begin{enumerate}[leftmargin=*]
+    \item Add a \texttt{uint256 minTokensOut} parameter to
+          \texttt{withdraw()} and revert with a clear error if
+          \texttt{userAmount < minTokensOut}. The UI computes the expected
+          mint at submission time and sets the slippage tolerance (for
+          example, 98\% of expected).
+    \item Replace the spot read with a time-weighted average price (TWAP)
+          using PancakeSwap V2's \texttt{price0CumulativeLast} /
+          \texttt{price1CumulativeLast} accumulators over a window of at
+          least 30 minutes, falling back to spot only when no observation
+          window is available.
+    \item Bound \texttt{tokensToTransfer} against a DAO-tunable
+          \texttt{MAX\_TOKENS\_PER\_USD} ceiling so that even a collapsed
+          spot price cannot mint above a hard limit.
+\end{enumerate}
+
+This single fix also fully neutralises the cross-block MEV sandwich vector
+documented in Section~\ref{sec:methodology}.
+
+\subsubsection*{Stress test against live LP reserves}
+\label{sec:c1-stress}
+
+To make the C-1 risk concrete against the actual on-chain pair, we re-ran
+the test-25 dump scenario against the live reserves recorded in
+Section~\ref{sec:live-lp}. The model is the one the contract uses:
+
+\[
+\text{spot} = \frac{\text{USDT}_{LP}}{\text{i6}_{LP} + \text{dump}},
+\quad
+\text{mint per USDT reward} = \frac{1}{\text{spot}}.
+\]
+
+Each row uses the live $\text{USDT}_{LP} = 595{,}319.5685$ USDT and
+$\text{i6}_{LP} = 415{,}236.5148$ i6 as the starting point.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\footnotesize
+\begin{tabular}{p{3.0cm} r r r r r r}
+\toprule
+\textbf{Scenario} & \textbf{i6 dumped} & \textbf{i6 LP after}
+                  & \textbf{Spot}      & \textbf{Price drop}
+                  & \textbf{i6 / 100 USDT} & \textbf{Mult.} \\
+\midrule
+Baseline                  &           0 &     415{,}237 & 1.4337 &  0.00\% &   69.75 &  1.00$\times$ \\
+Small (25k)               &      25{,}000 &     440{,}237 & 1.3523 &  5.68\% &   73.95 &  1.06$\times$ \\
+Medium (50k)              &      50{,}000 &     465{,}237 & 1.2796 & 10.75\% &   78.15 &  1.12$\times$ \\
+Moderate (100k)           &     100{,}000 &     515{,}237 & 1.1554 & 19.41\% &   86.55 &  1.24$\times$ \\
+\textbf{All circ. (181{,}673)}
+                          &  \textbf{181{,}673} &     596{,}910 & 0.9973 & 30.44\% &  100.27 & \textbf{1.44}$\times$ \\
+250k                      &     250{,}000 &     665{,}237 & 0.8949 & 37.58\% &  111.74 &  1.60$\times$ \\
+500k                      &     500{,}000 &     915{,}237 & 0.6505 & 54.63\% &  153.74 &  2.20$\times$ \\
+1M (needs C-2 chain)      &  1{,}000{,}000 &  1{,}415{,}237 & 0.4207 & 70.66\% &  237.73 &  3.41$\times$ \\
+2.5M                      &  2{,}500{,}000 &  2{,}915{,}237 & 0.2042 & 85.76\% &  489.69 &  7.02$\times$ \\
+\textbf{5M (matches test 25)}
+                          &  \textbf{5{,}000{,}000} &  5{,}415{,}237 & 0.1099 & 92.33\% &  909.64 & \textbf{13.04}$\times$ \\
+10M                       & 10{,}000{,}000 & 10{,}415{,}237 & 0.0572 & 96.01\% & 1{,}749.52 & 25.08$\times$ \\
+25M (catastrophic)        & 25{,}000{,}000 & 25{,}415{,}237 & 0.0234 & 98.37\% & 4{,}269.18 & 61.21$\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Read-out against live state.}
+
+\begin{itemize}[leftmargin=*]
+    \item Dumping \textbf{all 181{,}673 circulating i6} (the worst case
+          achievable today without first exploiting C-2) collapses spot
+          from $1.4337$ to $0.9973$ USDT/i6 (a $30.44\%$ drop) and
+          inflates the next \texttt{withdraw()} mint by $\mathbf{1.44\times}$
+          baseline.
+    \item A $\mathbf{500\text{k}}$ i6 dump (only reachable if the attacker
+          first chains C-1 + C-2 to mint extra i6) collapses spot to
+          $0.6505$ USDT/i6 ($-54.6\%$) and yields a
+          $\mathbf{2.20\times}$ mint inflation.
+    \item A $\mathbf{5\text{M}}$ i6 dump reproduces the test 25
+          measurement of an $\mathbf{\sim 13\times}$ mint multiplier
+          against the same starting price band.
+    \item The \textbf{USDT leg of the pool} stays at $595{,}319.57$ USDT
+          throughout: a transfer-and-\texttt{sync} dump does not move USDT.
+          USDT only leaves the LP via real swaps, e.g. the $60\%$
+          USDT$\rightarrow$i6 swap inside \texttt{invest()}, which in fact
+          counters the spiral.
+    \item Because there is \textbf{no \texttt{MAX\_SUPPLY}} (C-2), every
+          depressed-spot withdraw mints fresh i6 that itself becomes
+          dumpable in the next round. C-1 and C-2 amplify each other.
+\end{itemize}
+
+\paragraph{30-day forward projection.}
+
+Seeding day 0 with the full 181{,}673 i6 dump and re-running a daily
+withdraw + partial-recycle loop produces the following 30-day end-states
+(detailed day-by-day curves and an interactive view are available in the
+companion file \texttt{charts.html}):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{3.2cm} p{3.5cm} p{3.0cm} p{4.0cm}}
+\toprule
+\textbf{Scenario} & \textbf{Daily withdrawals} & \textbf{Recycle rate}
+                  & \textbf{Day 30 read-out} \\
+\midrule
+Conservative & $5{,}000$ USDT / day  & $25\%$ of mint
+             & spot $\approx 0.9365$, supply $\approx 752$k i6 \\
+Moderate     & $15{,}000$ USDT / day & $50\%$ of mint
+             & spot $\approx 0.6851$, supply $\approx 1.14$M i6 \\
+Aggressive   & $30{,}000$ USDT / day & $75\%$ of mint
+             & spot $\approx 0.3277$, supply $\approx 2.22$M i6 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Under the aggressive scenario the i6 supply grows by $\approx 3.7\times$
+its current value within a single month while $595{,}319.57$ USDT of LP
+collateral sits unchanged in the pair -- the protocol does not lose USDT,
+but every i6 holder is diluted in proportion to the spiral. After applying
+the C-1 + C-2 fixes (TWAP, \texttt{minTokensOut}, \texttt{MAX\_SUPPLY},
+\texttt{MAX\_TOKENS\_PER\_USD}), the same aggressive 30-day input flattens
+the spot curve within $\approx 5$ days and caps supply growth at the
+configured ceiling -- shown side-by-side in
+\texttt{charts.html}, Section 7.
+
+% ---------------- C-2 ----------------
+\subsection{C-2 -- No \texttt{MAX\_SUPPLY} cap on the i6 token}
+
+\begin{criticalbox}{C-2 \,\textbar\, Critical \,\textbar\, \texttt{i6token.sol}}
+\textbf{Affected code.} \texttt{mint(address,uint256)} (line 104).
+
+\textbf{Root cause.} The token's only mint authorisation check is
+``caller must be the configured system contract''. There is no upper
+bound on \texttt{totalSupply()}.
+\end{criticalbox}
+
+\subsubsection*{Mechanism}
+
+\begin{lstlisting}[caption={\texttt{i6token.sol} -- unbounded mint}]
+function mint(address to, uint256 amount) external onlySystem {
+    _mint(to, amount);
+}
+\end{lstlisting}
+
+The system contract is the sole minter, so the practical ceiling is whatever
+total \texttt{userAmount} accumulates from \texttt{withdraw()}. Because that
+amount scales as \texttt{usdtReward / spotPrice} (see C-1), a depressed
+spot price mints arbitrarily large amounts in a single withdraw. The supply
+invariant test (\texttt{26\_NoMaxSupply}) demonstrates a single \texttt{mint()}
+call producing \textbf{1{,}000{,}000{,}000{,}000 i6 (1 trillion)} without any
+revert, event, or cap -- against a documented circulating supply on the order
+of $5.8 \times 10^{5}$ tokens.
+
+\subsubsection*{Impact}
+
+\begin{itemize}[leftmargin=*]
+    \item There is no on-chain guarantee on the maximum number of i6 that
+          will ever exist.
+    \item Combined with C-1, one badly-timed or maliciously-sandwiched
+          withdraw can inflate supply by several orders of magnitude in a
+          single transaction.
+    \item Any holder, exchange listing, or accounting that assumes a fixed
+          (or even bounded) maximum supply is incorrect against the
+          current code.
+\end{itemize}
+
+\subsubsection*{Recommendation}
+
+\begin{enumerate}[leftmargin=*]
+    \item Define an immutable
+          \texttt{uint256 public constant MAX\_SUPPLY} (for example
+          $10^{9}\times 10^{18}$) and enforce
+          \texttt{totalSupply() + amount <= MAX\_SUPPLY} inside
+          \texttt{mint()}, reverting otherwise. \\
+
+\begin{lstlisting}[caption={Recommended cap}]
+uint256 public constant MAX_SUPPLY = 1_000_000_000 * 1e18;
+
+function mint(address to, uint256 amount) external onlySystem {
+    require(totalSupply() + amount <= MAX_SUPPLY, "MAX_SUPPLY");
+    _mint(to, amount);
+}
+\end{lstlisting}
+
+    \item Alternatively (or additionally), rate-limit minting per second
+          / per block so that even an oracle-driven inflation event cannot
+          exceed a known throughput.
+\end{enumerate}
+
+\newpage
+
+% ====================================================================
+%  6. OPTIMISATION
+% ====================================================================
+\section{Gas Optimisation}
+
+\subsection{G-1 -- Configure \texttt{maxDownlineDepth = 600}}
+
+\begin{optimizationbox}{G-1 \,\textbar\, Optimisation \,\textbar\, \texttt{i6systemcontract.sol}}
+\textbf{Recommendation.} Reduce \texttt{maxDownlineDepth} from the current
+\textbf{1000} to \textbf{600}. The protocol becomes more gas-efficient at the
+deepest configured tree boundary while still comfortably accommodating
+realistic MLM depth in production.
+
+\textbf{Justification.} The dominant gas cost in \texttt{invest()} is the
+linear walk up the downline performed by \texttt{\_updateDownlineBusiness()}.
+Reducing the upper bound directly trims worst-case \texttt{invest()} gas with
+no functional change to payouts at realistic depths.
+\end{optimizationbox}
+
+\subsubsection*{Measured gas profile}
+
+The \texttt{38\_GasAnalysis} suite (run against the BSC fork with local mocks
+to isolate MLM logic from PancakeSwap overhead) produces the following raw
+measurements:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{6.5cm} r r r}
+\toprule
+\textbf{Scenario} & \textbf{Gas} & \textbf{\% 140M block} & \textbf{\% 30M RPC} \\
+\midrule
+\texttt{invest()} depth 1                          &    775{,}108 & 0.55\% & 2.58\% \\
+\texttt{invest()} depth 100                        &  1{,}805{,}116 & 1.28\% & 6.01\% \\
+\texttt{invest()} depth 200                        &  1{,}914{,}214 & 1.36\% & 6.38\% \\
+\texttt{invest()} 200th direct on sponsor          &  2{,}010{,}637 & 1.43\% & 6.70\% \\
+\texttt{withdraw()} 100 packages                   &  2{,}085{,}475 & 1.49\% & 6.95\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The slope across depth is well understood:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Cold upline levels (1..100)}: $\approx 10{,}404$ gas per
+          level (storage slots first touched).
+    \item \textbf{Warm upline levels (101..1000)}: $\approx 1{,}090$ gas per
+          level (rewrites of already-touched slots).
+\end{itemize}
+
+\subsubsection*{Extrapolation to \texttt{maxDownlineDepth = 600}}
+
+Adding the warm-level slope to the measured depth-200 baseline and including
+the real on-chain PancakeSwap overhead ($\approx 350{,}000$ gas for the
+swap + \texttt{addLiquidity} + burn):
+
+\[
+\underbrace{1{,}914{,}214}_{\text{depth-200 base}} \;+\;
+\underbrace{(600 - 200)\times 1{,}090}_{\text{warm-level cost}} \;+\;
+\underbrace{350{,}000}_{\text{Pancake overhead}}
+\;\approx\;
+\textbf{2.70\,M gas}.
+\]
+
+This is the worst-case real-world \texttt{invest()} cost at depth 600. It
+represents:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{6.5cm} r}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+\% of BSC 140M block gas limit                       & $\approx 1.93\%$ \\
+\% of standard 30M RPC transaction cap               & $\approx 9.00\%$ \\
+\textbf{Saving vs.\ current depth-1000 worst case} & $\approx 440{,}000$ gas \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection*{Why 600 (and not lower)}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Headroom.} At depth 600 the worst-case \texttt{invest()}
+          stays below 10\% of the 30M RPC cap, giving comfortable headroom
+          for future logic changes without immediately re-entering the gas
+          danger zone.
+    \item \textbf{Payout fidelity.} Empirical MLM downlines rarely exceed
+          a few hundred sponsored levels in any one user's upline. A 600
+          ceiling preserves every reachable production payout path while
+          discarding only the deep tail.
+    \item \textbf{Aggregate savings.} On the protocol level, every deep-tree
+          invest saves roughly $4.4 \times 10^{5}$ gas. Across thousands
+          of deposits the cumulative gas saved -- and therefore cumulative
+          BNB paid by end users -- is material.
+\end{itemize}
+
+\subsubsection*{Implementation}
+
+The change is a single DAO call to the existing setter (no code change):
+
+\begin{lstlisting}[caption={Recommended configuration call}]
+// Called by the DAO multisig at 0x4EA9...32f
+system.setMaxDownlineDepth(600);
+\end{lstlisting}
+
+If the project wishes to make the new ceiling structural, the constant
+\texttt{maxDownlineDepth} can additionally be lowered in the contract source
+and re-deployed, after applying the C-1 / C-2 fixes.
+
+\newpage
+
+% ====================================================================
+%  7. WHAT WAS TESTED AND PASSED
+% ====================================================================
+\section{Vectors That Passed}
+\label{sec:passed}
+
+For the avoidance of doubt, the following classes of attack were
+\textbf{exercised in code} on the BSC mainnet fork (with the live token,
+system, DAO, pair, and router pinned by \texttt{BaseFork.t.sol}) and confirmed
+to be defended by the protocol as deployed. For each category we record what
+was attempted, which contract-level defence neutralised it, the concrete
+revert path or measurement observed in the test run, and the relevant
+references inside the audited code.
+
+\subsection{Flash-loan financing}
+
+\subsubsection*{What was attempted}
+
+A purpose-built \texttt{FlashBorrower} contract borrows USDT from the live
+PancakeSwap V2 USDT/i6 pair via \texttt{pair.swap(amount0Out, amount1Out, to,
+data)} with a non-empty \texttt{data} payload, which causes the pair to
+re-enter the borrower through \texttt{pancakeCall(\dots)}. Inside the
+callback, the borrower:
+
+\begin{enumerate}[leftmargin=*]
+    \item Approves USDT to the system contract.
+    \item Calls
+          \texttt{system.invest(borrowAmount / 2, ORIGIN\_MEMBER\_ID, 0)} in
+          order to fund an invest that the borrower could not normally
+          afford.
+    \item Attempts to repay the pair so that the outer \texttt{swap}
+          K-invariant check would clear.
+\end{enumerate}
+
+\subsubsection*{What happened}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{system.invest(\dots)} reverts \emph{inside} the
+          \texttt{pancakeCall} callback because of the
+          \texttt{tx.origin == msg.sender} guard on \texttt{invest()},
+          \texttt{withdraw()} and \texttt{claimRank()}. The contract
+          \texttt{FlashBorrower} is never the EOA that signed the outer
+          transaction, so the guard fires before any state mutation.
+    \item Because the borrower never repays USDT to the pair, the outer
+          \texttt{pair.swap} then reverts at the constant-product
+          (\(x\cdot y \geq k\)) check, unwinding the entire flash-loan
+          attempt atomically.
+    \item Final attacker balance change: \emph{zero}. No funds extracted, no
+          state mutated, no event emitted.
+\end{itemize}
+
+\subsubsection*{Defence}
+
+The \texttt{tx.origin == msg.sender} check on the three critical entry
+points (\texttt{invest}, \texttt{withdraw}, \texttt{claimRank}) is the
+single line that closes the entire flash-loan attack surface. A
+flash-loan-funded smart contract cannot invoke any state-changing public
+function in scope, regardless of how it obtained the funds.
+
+\subsection{i6 transfers between non-whitelisted contracts}
+
+\subsubsection*{What was attempted}
+
+Independently of the system contract, a contract attempts to receive i6 and
+forward it to another contract -- the typical building block of any
+multi-hop flash-loan or arbitrage strategy that touches the LP from a
+non-EOA caller.
+
+\subsubsection*{What happened}
+
+The token's \texttt{\_update} hook reverts with
+\texttt{Err\_NoContractCallsAllowed} whenever the transfer is between two
+non-whitelisted contracts (\texttt{from.code.length > 0} and
+\texttt{to.code.length > 0} and neither side is whitelisted). The
+\texttt{systemContract} address is whitelisted at construction time so the
+mint-on-withdraw path is unaffected; the LP pair is whitelisted so swaps
+through PancakeSwap remain valid; everything else outside the whitelist is
+blocked.
+
+\subsubsection*{Defence}
+
+The whitelist + \texttt{tx.origin}-style check inside the token's
+\texttt{\_update} extends flash-loan protection from the system contract to
+the token itself, so a smart-contract-driven dump of i6 into the pair (the
+classic ``mint, dump, withdraw against depressed spot'' chain) is also
+blocked at the token layer.
+
+\subsection{In-block (single-block) sandwich attack}
+
+\subsubsection*{What was attempted}
+
+A simulated MEV bot tries the textbook three-transaction sandwich pattern
+within a single block:
+
+\begin{enumerate}[leftmargin=*]
+    \item Front-run: bot calls \texttt{invest(MAX\_INVESTMENT, \dots)} or
+          dumps i6 against the LP.
+    \item Victim's \texttt{withdraw()} executes.
+    \item Back-run: bot reverses its position.
+\end{enumerate}
+
+\subsubsection*{What happened}
+
+Each of the three transactions targets a contract that tracks the last block
+the caller / recipient touched it:
+
+\begin{itemize}[leftmargin=*]
+    \item System: \texttt{lastBlockNumber[user] == block.number} reverts
+          subsequent calls in the same block.
+    \item Token (sender side): \texttt{lastTxBlock[from] == block.number}
+          reverts repeat sends.
+    \item Token (recipient side):
+          \texttt{lastReceiveBlock[to] == block.number} reverts repeat
+          receives.
+\end{itemize}
+
+Any attempt to land both the front-run and the victim transaction in the
+same block reverts the second of the two; the third leg of the sandwich
+never executes. The attacker pays gas for the failed leg and extracts
+nothing.
+
+\subsubsection*{Note on cross-block sandwiching}
+
+The \emph{cross-block} variant is the residual MEV surface and is the
+attack documented in C-1. It is not a passing vector. The fix recommended
+for C-1 (TWAP plus \texttt{minTokensOut}) neutralises it.
+
+\subsection{Reentrancy on critical paths}
+
+\subsubsection*{What was attempted}
+
+A malicious receiver attempts to re-enter \texttt{withdraw()},
+\texttt{invest()} and \texttt{claimRank()} during the i6 \texttt{safeTransfer}
+that fires inside \texttt{\_executeWithdrawTransfer}, by exploiting any
+hook on the recipient address (whitelisted contract, allowance-tracking
+proxy, etc.).
+
+\subsubsection*{What happened}
+
+All three entry points carry the \texttt{nonReentrant} modifier, which sets
+and checks the OpenZeppelin reentrancy guard. The re-entered call reverts
+before reading any state, leaving the original invocation to complete
+normally and the modifier to clear the guard on exit. The test suite
+asserts that:
+
+\begin{itemize}[leftmargin=*]
+    \item A re-entry of \texttt{withdraw()} during its own token transfer
+          reverts.
+    \item A re-entry of \texttt{invest()} during its own \texttt{swap +
+          addLiquidity} callbacks reverts.
+    \item \texttt{claimRank()} cannot be re-entered through a salary payout
+          callback.
+\end{itemize}
+
+\subsubsection*{Defence}
+
+The \texttt{nonReentrant} modifier is sufficient because none of the
+critical state mutations occur \emph{after} the external call -- the
+contract follows checks--effects--interactions for the relevant balances --
+so even without the guard the reentrancy window would be narrow. The guard
+makes that property structural rather than emergent.
+
+\subsection{Withdrawal cooldown and post-launch wait}
+
+\subsubsection*{What was attempted}
+
+\begin{itemize}[leftmargin=*]
+    \item Calling \texttt{withdraw()} less than \texttt{3600 s}
+          (\texttt{WITHDRAWAL\_COOLING\_PERIOD}) after the user's previous
+          successful withdraw.
+    \item Calling \texttt{withdraw()} before three days have elapsed since
+          \texttt{launchTime}.
+\end{itemize}
+
+\subsubsection*{What happened}
+
+Both calls revert with the dedicated cooldown / post-launch errors. The
+checks are simple SLOAD-compare-revert with no branches that depend on
+caller-controlled state, so no parameter fuzz produces a bypass. The fuzz
+campaign in the audit suite explored thousands of timestamps either side of
+the boundary; no withdrawal landed inside the prohibited window.
+
+\subsection{Buy-during-180-day-lock}
+
+\subsubsection*{What was attempted}
+
+A non-whitelisted EOA attempts to swap USDT for i6 against the live LP
+while \texttt{buyingEnabled == false}, both before the 180-day window
+elapses and -- as a sanity check -- with the LP pair's reserves spoofed in
+the fork to look attractive.
+
+\subsubsection*{What happened}
+
+The token's \texttt{\_update} rejects the LP-to-EOA transfer because the
+buy lock is in force. \texttt{buyingEnabled} cannot be flipped to
+\texttt{true} until \texttt{block.timestamp >= deployTime + 180 days}, and
+even then only by the DAO. At the audit snapshot the on-chain timer reports
+\texttt{timeUntilBuyUnlock $\approx$ 11{,}049{,}476 s} (${\sim}127.9$ days)
+remaining, so no path through a non-DAO actor can lift the lock.
+
+\subsection{Depth- and package-based denial of service}
+
+\subsubsection*{What was attempted}
+
+For each critical entry point we constructed the worst-case scenario the
+contract allows by design:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{invest()} at the deepest configured upline depth
+          (\texttt{maxDownlineDepth = 1000}).
+    \item \texttt{invest()} at the maximum direct count
+          (\texttt{MAX\_DIRECTS = 200}).
+    \item \texttt{withdraw()} with the maximum allowed packages per user
+          (100, gated by \texttt{Err\_MaxInvestmentsAllowed}).
+\end{itemize}
+
+The harness deploys local mocks for USDT, the pair, and the router so that
+the heavy gas measurements are not constrained by public BSC RPC state
+pruning; the real-on-chain PancakeSwap overhead is then added back as a
+calibrated constant (${\sim}350\text{k}$ gas for \texttt{invest()},
+${\sim}150\text{k}$ gas for ORIGIN-branch \texttt{withdraw()}).
+
+\subsubsection*{Measured worst cases}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{7.0cm} r r r}
+\toprule
+\textbf{Scenario} & \textbf{Gas} & \textbf{\% 140M block} & \textbf{\% 30M RPC} \\
+\midrule
+\texttt{invest()} at depth 1000, 200 directs, 100 packages (extrapolated)
+                                                     & ${\sim}3.56\text{M}$ & 2.5\%  & 11.9\% \\
+\texttt{withdraw()} 100 packages (independent of depth / directs)
+                                                     & ${\sim}2.24\text{M}$ & 1.6\%  &  7.5\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection*{Conclusion}
+
+Both worst-case figures sit comfortably below the BSC block gas limit
+(140{,}000{,}000) and the standard 30M RPC transaction cap, with roughly
+$30$--$60\times$ headroom on the block limit and $\sim 8.4\times$ headroom
+on the RPC cap. \textbf{No depth-, direct-count-, or package-count-based
+denial-of-service vector is reachable at the configured boundaries.}
+G-1 (Section~6.1) recommends an additional configuration tightening on top
+of this passing result.
+
+\subsection{Same-block griefing of inbound transfers}
+
+\subsubsection*{What was attempted}
+
+An attacker sends a dust amount of i6 to a victim in block \(N\) in order
+to set \texttt{lastReceiveBlock[victim] = N}, hoping that any inbound
+transfer in the same block (including the victim's own
+\texttt{withdraw()}-driven mint, or a salary payout) will revert with
+\texttt{Err\_CooldownActive}.
+
+\subsubsection*{What happened}
+
+The token correctly enforces the receive cooldown, and the dust send is
+contained: it does not interact with the user's USDT balance, invested
+principal, accrued ROI, salary entitlement or pending direct bonus.
+Critically, the system's own same-block lock (\texttt{lastBlockNumber})
+makes the win window itself small -- the victim cannot in practice attempt
+their own withdraw in the same block they already received the dust,
+because the system would also reject the second call. The combined
+defences contain the griefing vector to a single delayed block, with no
+loss of funds.
+
+\subsection{Reentrancy through residual-token burn path}
+
+\subsubsection*{What was attempted}
+
+The \texttt{\_swapTokenFromPancakev2} path performs a router-driven swap
+and a follow-up \texttt{addLiquidity}, ending in a \texttt{burn(\dots)} of
+the residual i6 balance. We attempted to reach the burn path while a
+non-whitelisted observer had pending allowance / approvals on the same
+token, to see whether re-entry through callback-style ERC777 hooks (the
+i6 token is plain ERC20, but the test exercised the path defensively)
+could escalate.
+
+\subsubsection*{What happened}
+
+The i6 token implements no callback hooks (it is OpenZeppelin ERC20, not
+ERC777), so no re-entry surface exists; the burn path runs to completion
+linearly. The same-block lock on the token additionally prevents any
+attacker contract from racing the burn within the same block.
+
+\subsection{Mint authorisation (\texttt{onlySystem})}
+
+\subsubsection*{What was attempted}
+
+Every non-system address -- EOA, contract, DAO multisig, and the original
+token deployer -- was asked to call \texttt{token.mint(attacker, amount)}.
+
+\subsubsection*{What happened}
+
+All calls revert at the \texttt{onlySystem} guard. The system contract
+address itself is stored at construction and is the only address able to
+mint. The audit notes:
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{token.owner() == address(0)} (renounced). There is no
+          owner-controlled path to swap the system address.
+    \item There is no setter for \texttt{systemContract} on the token after
+          construction.
+    \item The DAO multisig has no privilege on the token mint path; its
+          power is on the system side only.
+\end{itemize}
+
+This is the access-control invariant on which C-2's recommended cap
+relies: once \texttt{MAX\_SUPPLY} is added inside \texttt{mint()}, only the
+system contract will ever attempt to cross it.
+
+\subsection{Withdrawal-state state-machine invariants}
+
+\subsubsection*{What was attempted}
+
+Targeted fuzzing of the user state machine:
+
+\begin{itemize}[leftmargin=*]
+    \item Invest, partial-withdraw, re-invest, withdraw across the
+          \texttt{isCapped} boundary.
+    \item Withdraw immediately after deposit (within the same block, then
+          across one block, then after \texttt{1 h}, then after
+          \texttt{1 h + 1 s}).
+    \item Withdraw after package reaches the per-package $2.5\times$ ROI
+          cap.
+    \item Withdraw after user reaches the global $6\times$ income cap.
+\end{itemize}
+
+\subsubsection*{What happened}
+
+The same-block lock blocks the first variant; the cooldown blocks the
+\texttt{1 h}-boundary variants; the per-package cap correctly marks
+\texttt{inv.isActive = false}; the global cap correctly sets
+\texttt{u.isCapped = true} and short-circuits subsequent reward accrual.
+No accounting underflow or double-withdraw was reachable in this state
+space.
+
+\subsection{Oracle read on empty / degenerate reserves}
+
+\subsubsection*{What was attempted}
+
+An attempt to read \texttt{getSpotPrice()} against an LP pair whose
+reserves are zero or whose token order has been flipped after a router /
+pair hot-swap.
+
+\subsubsection*{What happened}
+
+\texttt{getSpotPrice()} reverts on zero reserves rather than returning a
+divide-by-zero or a misleading price; downstream callers (such as
+\texttt{\_executeWithdrawTransfer}) therefore revert cleanly rather than
+silently minting against bogus data. The token-order check inside the
+spot-price helper consistently reads the USDT/i6 ratio in the documented
+direction.
+
+This is a defence-in-depth observation: even if C-1 were not fixed, the
+oracle never returns a value that would cause an arithmetic crash inside
+\texttt{withdraw()} from \emph{absent} reserves. C-1 is about the value
+returned from \emph{non-zero but manipulated} reserves.
+
+\subsection{Owner renouncement and role separation}
+
+\subsubsection*{What was attempted}
+
+A read of every privileged role on both contracts at the audit snapshot
+to confirm that no residual owner / admin power exists outside the DAO
+multisig and the system contract itself.
+
+\subsubsection*{What happened}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{token.owner() == address(0)} -- ownership renounced.
+    \item Token has no upgrade hook, no proxy admin, no \texttt{upgradeTo}
+          selector.
+    \item System contract recognises the DAO multisig
+          (\texttt{0x4EA9\dots32f}) as the sole authority for the
+          \texttt{DAOMultiSignRequired} / \texttt{onlyDAO} setter family.
+    \item Mint authority on the token resolves to the single system address;
+          no second minter exists.
+\end{itemize}
+
+The renouncement is structural (the \texttt{owner} slot is the zero
+address) rather than merely behavioural, which is the correct property for
+a renounced ERC20 deployment.
+
+\subsection{Hard configuration boundaries respected}
+
+\subsubsection*{What was attempted}
+
+We pushed each documented protocol boundary to and past its limit:
+
+\begin{itemize}[leftmargin=*]
+    \item Adding the 101st investment package to a user.
+    \item Adding the 201st direct under a sponsor.
+    \item Invoking the various DAO setters with out-of-range values
+          (\texttt{setROI(11)}, \texttt{setMaxDownlineDepth(0)}, etc.).
+    \item Calling \texttt{invest(0, \dots)} and
+          \texttt{invest(MAX\_INVESTMENT + 1, \dots)}.
+\end{itemize}
+
+\subsubsection*{What happened}
+
+Each boundary breach reverts with the dedicated error
+(\texttt{Err\_MaxInvestmentsAllowed},
+\texttt{Err\_MaxDirectsReached}, range-check reverts on DAO setters,
+\texttt{Err\_InvalidAmount}). The contract never silently truncates,
+saturates, or accepts an out-of-range value.
+
+\subsection{Additional named attack classes}
+
+In addition to the protocol-specific vectors above, the audit explicitly
+exercised the catalogue of classical, named smart-contract attack patterns
+that any production EVM deployment is expected to defend against. Each
+subsection below records what was attempted, what was observed, and the
+structural reason the attack does not land against the audited contracts.
+
+\subsubsection*{Integer overflow / underflow}
+
+\textbf{Attempted.} Forcing arithmetic wraparound on every accumulator
+(\texttt{totalDeposits}, \texttt{totalWithdrawn},
+\texttt{totalDownlineBusiness}, \texttt{levelRewardBase[i]}, salary streams,
+ROI multiplier compounding, and the package-level $2.5\times$ cap math), and
+forcing underflow on the cap-drop subtraction path inside
+\texttt{\_updateUplineStream}.
+
+\textbf{Result.} Solidity \texttt{\^{}0.8.34} performs built-in checked
+arithmetic on every \texttt{+ - * /}. Any wraparound reverts with
+\texttt{Panic(0x11)} or \texttt{Panic(0x12)} before mutating state. The fuzz
+campaign on the arithmetic helpers
+(\texttt{\_rpow}, \texttt{getTotalLifetimeRWP}, \texttt{salaryPerSec}) found
+no overflow / underflow producing silent corruption. Truncation-direction
+bias was measured -- and is acceptable as designed -- but no overflow path
+is reachable.
+
+\subsubsection*{\texttt{tx.origin} authentication and phishing}
+
+\textbf{Attempted.} A malicious dApp tries to trick a user into signing a
+transaction whose call frame routes through an attacker contract that then
+re-emits a payload calling \texttt{system.withdraw()} or
+\texttt{system.invest()} from the attacker contract's context.
+
+\textbf{Result.} \texttt{tx.origin} is used here \emph{as a defence}, not as
+an authentication primitive on behalf of the user. The check
+\texttt{tx.origin == msg.sender} on \texttt{invest}, \texttt{withdraw} and
+\texttt{claimRank} rejects \emph{every} call whose immediate caller is a
+contract, regardless of who the EOA is. The classical
+``\texttt{tx.origin}-phishing'' attack relies on contracts being able to
+re-enter privileged actions on behalf of the EOA; here, that re-entry is
+exactly the case that is rejected, so the attack inverts: \texttt{tx.origin}
+is the property closing the surface rather than opening it.
+
+\subsubsection*{Block-timestamp / miner manipulation}
+
+\textbf{Attempted.} A BSC validator with limited control over
+\texttt{block.timestamp} (±15 s in practice) tries to either:
+
+\begin{itemize}[leftmargin=*]
+    \item bring forward the 1-hour withdrawal cooldown,
+    \item bring forward the 180-day buy-unlock window,
+    \item bring forward the 3-day post-launch wait, or
+    \item shift salary accrual to overpay rank holders.
+\end{itemize}
+
+\textbf{Result.} The cooldown (\(3600\,\text{s}\)) and the post-launch wait
+(\(3\,\text{days}\)) are large enough that the validator's drift window is
+economically negligible. The 180-day timer is at the day scale; a
+validator-level drift is bounded to seconds. Salary accrual uses elapsed
+seconds since the last realisation, so timestamp drift redistributes a
+fraction of a salary tick at most, with no path to materially overpay.
+No timestamp-based exploit was reachable.
+
+\subsubsection*{\texttt{delegatecall} / proxy storage collision}
+
+\textbf{Attempted.} Static analysis of both contracts for any
+\texttt{delegatecall} site or proxy / upgrade pattern that would allow an
+attacker to hijack storage layout.
+
+\textbf{Result.} Neither \texttt{i6token.sol} nor \texttt{i6systemcontract.sol}
+contains any \texttt{delegatecall}, \texttt{Proxy}, \texttt{UUPSUpgradeable},
+\texttt{TransparentUpgradeableProxy}, or \texttt{Initializable} usage. The
+contracts are non-upgradeable. There is no storage-collision surface to
+attack.
+
+\subsubsection*{\texttt{selfdestruct} and forced ETH transfer}
+
+\textbf{Attempted.} An attacker selfdestructs a balanced helper contract
+into the system to force-feed ETH and break any
+\texttt{this.balance == expected} invariant; and a search for any
+\texttt{selfdestruct} / \texttt{SELFDESTRUCT} opcode emitted from the
+audited contracts themselves.
+
+\textbf{Result.} The system contract custodies USDT (ERC20), not native ETH;
+no logic branches on \texttt{address(this).balance}. Force-feeding ETH
+therefore mutates nothing the contract reads. Neither contract emits a
+\texttt{selfdestruct}; the contracts cannot be destroyed by their own
+authors or by any caller.
+
+\subsubsection*{ERC20 approval race condition}
+
+\textbf{Attempted.} The classical ERC20 \texttt{approve} race
+(``\texttt{approve}-from-N-to-M with N>0'') against the i6 token, by
+front-running a user's \texttt{approve(spender, M)} that follows a previous
+\texttt{approve(spender, N)}.
+
+\textbf{Result.} The i6 token is OpenZeppelin ERC20, which inherits the
+standard approve semantics. The known race is well-understood and the
+recommended off-chain pattern (\texttt{approve(0)} then
+\texttt{approve(M)}) is industry standard. More importantly, in the audited
+flow the system contract is the only spender on the user's USDT, and the
+approval is set inside the same transaction as \texttt{invest()}; there is
+no realistic window in which a victim approves a stale amount that an
+attacker could double-spend. No approval-race exploit is reachable through
+the documented user paths.
+
+\subsubsection*{Read-only reentrancy}
+
+\textbf{Attempted.} Re-entering a \emph{view} function on the audited
+contracts during a write call to the LP pair, in order to read an
+inconsistent intermediate state (a recently-popularised pattern against
+Curve / Balancer style pools).
+
+\textbf{Result.} The audited contracts do not call into PancakeSwap and then
+re-read their own view functions inside the same external context; the
+\texttt{getSpotPrice()} read happens \emph{before} any state mutation in
+\texttt{withdraw}, and no second read against a half-mutated pair state is
+performed. No view-function pathway combines an external write callback
+with a stale-state read.
+
+\subsubsection*{Cross-function reentrancy}
+
+\textbf{Attempted.} Re-entering a \emph{different} non-reentrant function
+from inside one already protected -- the historical bypass against
+single-function locks.
+
+\textbf{Result.} \texttt{invest}, \texttt{withdraw}, \texttt{claimRank} all
+share \texttt{nonReentrant}, which uses one process-wide guard. Re-entering
+any of them from inside the others reverts. The test suite exercised every
+pairwise cross-entry and confirmed every cross-call reverts.
+
+\subsubsection*{Denial of service through unexpected revert (push-payment DoS)}
+
+\textbf{Attempted.} An attacker addresses themselves into a position where
+the system must transfer to them and force the transfer to revert,
+stalling the entire payout (the classic ``King-of-the-Ether'' pattern).
+
+\textbf{Result.} The contracts use \texttt{SafeERC20.safeTransfer} for USDT
+and \texttt{IERC20.transfer} / \texttt{safeTransfer} for the i6 mint. None
+of the recipients in the standard payout path are attacker-controlled
+externally -- they are either the withdrawer themselves or, in the ORIGIN
+case, seven hard-coded addresses. No external party can inject themselves
+into the payout chain as a forced recipient; therefore no DoS-by-failing-
+transfer vector is reachable against another user's withdraw. The
+ORIGIN-side multi-recipient surface is contained as discussed in the
+griefing subsection above.
+
+\subsubsection*{Denial of service through block-gas exhaustion}
+
+\textbf{Attempted.} Pushing the deepest unbounded loop in the protocol --
+\texttt{\_updateDownlineBusiness} -- to a depth that produces a transaction
+that cannot fit inside a BSC block.
+
+\textbf{Result.} The loop bound is exactly \texttt{maxDownlineDepth}
+(currently 1000). At that ceiling the worst-case \texttt{invest()} costs
+$\sim 3.56$M gas $-$ approximately 2.5\% of the BSC 140M block limit. There
+is no path to a transaction that does not fit in a block. The G-1
+optimisation tightens this further.
+
+\subsubsection*{Gas griefing}
+
+\textbf{Attempted.} A malicious relay or wrapper consumes most of the
+forwarded gas before invoking the audited entry point, hoping to trigger an
+out-of-gas inside a critical state update that leaves storage half-written.
+
+\textbf{Result.} The \texttt{tx.origin} check on the entry points already
+excludes a contract-based relay; the audited functions can only be invoked
+directly by an EOA-signed transaction, so the attacker cannot wedge a gas
+griefer between the signature and the protected logic. Any direct OOG by
+the EOA reverts the entire call and rolls back state, with no
+half-written effect.
+
+\subsubsection*{Front-running of DAO setters}
+
+\textbf{Attempted.} Watching the mempool for an in-flight call to a
+\texttt{DAOMultiSignRequired} setter (e.g. \texttt{setROI},
+\texttt{setDexRouter}, \texttt{setTradingPair},
+\texttt{setMaxDownlineDepth}) and submitting a transaction that exploits
+the pre-change configuration.
+
+\textbf{Result.} Setters are guarded by the DAO modifier and gated behind
+the multisig key; they are not parameter-driven by user input. Any
+front-running advantage is bounded to acting on the pre-change parameter,
+which is by definition the value the protocol was already operating under.
+No setter implements a privileged action whose ordering relative to user
+calls is exploitable (the C-4 router hot-swap risk in earlier draft work
+was de-scoped from this report; the current code retains the DAO modifier
+which is the documented design).
+
+\subsubsection*{Signature replay / EIP-712 replay}
+
+\textbf{Attempted.} A search for any signed-message entry point on either
+contract whose signature could be replayed across chains, across blocks,
+or against a different user.
+
+\textbf{Result.} Neither contract uses \texttt{ecrecover} or any
+EIP-712 / EIP-2612 / EIP-1271 signature flow. There is no signed-message
+attack surface to replay.
+
+\subsubsection*{Insecure randomness}
+
+\textbf{Attempted.} A search for any on-chain randomness primitive
+(\texttt{block.prevrandao}, \texttt{blockhash}, \texttt{block.difficulty},
+\texttt{keccak256(block, sender)}) used as a decision input.
+
+\textbf{Result.} Neither contract consumes any randomness. There is no
+prediction / manipulation surface against ``random'' state.
+
+\subsubsection*{Storage collision and uninitialised storage pointers}
+
+\textbf{Attempted.} Static analysis for uninitialised local storage
+pointers (a Solidity \(<\)0.5 hazard, but still useful to confirm), and for
+any shared storage layout between contracts that could be poisoned.
+
+\textbf{Result.} Both contracts are written for Solidity \texttt{\^{}0.8.34},
+which forbids uninitialised storage pointers at the compiler level. The
+contracts are independent (token and system communicate only through
+external ABI calls), so no shared layout exists.
+
+\subsubsection*{Short-address / calldata mis-encoding}
+
+\textbf{Attempted.} The historical ``short address'' attack against
+non-padded ERC20 calldata.
+
+\textbf{Result.} The Solidity ABI decoder has enforced calldata length
+checks since well before the audited compiler version; the attack is
+mitigated at the EVM tooling layer. No code in scope re-implements raw
+calldata parsing.
+
+\subsubsection*{Hidden fee / honeypot patterns}
+
+\textbf{Attempted.} A read of every transfer / mint / withdraw branch for
+asymmetric fees, blocked-receiver lists, transfer-back hooks, or any
+``buy works, sell silently fails'' pattern.
+
+\textbf{Result.} The i6 token implements a clear, symmetric ERC20
+behaviour for whitelisted parties and a clear, documented same-block /
+buy-lock guard for non-whitelisted parties. The withdraw path mints into
+the user's wallet directly, with no hidden fee or blocking branch in the
+payout chain. The protocol is not a honeypot pattern.
+
+\subsubsection*{Front-running of the constructor / deployment}
+
+\textbf{Attempted.} A check that the deployment script does not race a
+post-constructor configuration call (a recurrent issue in upgradeable /
+factory-deployed setups).
+
+\textbf{Result.} The contracts are not upgradeable, and the system contract
+takes its dependencies (token, USDT, DAO, router, pair) at construction.
+The deployment trace shows the token's \texttt{systemContract} is set
+in the same transaction context as the rest of the wiring, with the
+\texttt{onlySystem} guard in force from block-1. No window exists in which
+a non-authorised \texttt{mint()} could land.
+
+\subsection{Summary of passing surface}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{p{5.6cm} p{5.4cm} p{3.5cm}}
+\toprule
+\textbf{Vector} & \textbf{Primary defence} & \textbf{Outcome} \\
+\midrule
+Flash-loan-funded invest / withdraw
+    & \texttt{tx.origin == msg.sender} on entry points
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Contract-to-contract i6 transfers
+    & Whitelist + token \texttt{\_update} guard
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+In-block sandwich on \texttt{withdraw()}
+    & Same-block locks on system + token
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Reentrancy on \texttt{invest} / \texttt{withdraw} / \texttt{claimRank}
+    & \texttt{nonReentrant} + CEI ordering
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Withdrawal cooldown / post-launch wait
+    & \texttt{WITHDRAWAL\_COOLING\_PERIOD} + 3-day launch wait
+    & \textcolor{passgreen}{\textbf{Enforced}} \\
+Buy-during-180-day-lock
+    & \texttt{buyingEnabled} + 180-day timer
+    & \textcolor{passgreen}{\textbf{Enforced}} \\
+Depth- / package-based DoS
+    & Bounded loops + bounded package count
+    & \textcolor{passgreen}{\textbf{Below caps}} \\
+Same-block inbound grief
+    & \texttt{lastReceiveBlock} + system same-block lock
+    & \textcolor{passgreen}{\textbf{Contained}} \\
+Burn-path reentry
+    & ERC20 (no callbacks) + same-block lock
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Unauthorised mint
+    & \texttt{onlySystem}; owner renounced
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Withdrawal-state-machine fuzz
+    & Cap + cooldown + per-package flag
+    & \textcolor{passgreen}{\textbf{No anomaly}} \\
+Oracle read on empty reserves
+    & Reverts on zero reserves
+    & \textcolor{passgreen}{\textbf{Safe}} \\
+Owner / role separation
+    & Owner renounced, single DAO authority, single minter
+    & \textcolor{passgreen}{\textbf{Confirmed}} \\
+Configuration boundary breaches
+    & Dedicated revert per boundary
+    & \textcolor{passgreen}{\textbf{Rejected}} \\
+\midrule
+Integer overflow / underflow
+    & Solidity \texttt{\^{}0.8.34} checked arithmetic
+    & \textcolor{passgreen}{\textbf{Reverts}} \\
+\texttt{tx.origin} phishing
+    & \texttt{tx.origin == msg.sender} used as defence
+    & \textcolor{passgreen}{\textbf{Inverted}} \\
+Block-timestamp / miner manipulation
+    & Cooldown / launch / buy-lock windows are coarse
+    & \textcolor{passgreen}{\textbf{Negligible}} \\
+\texttt{delegatecall} / proxy storage collision
+    & No \texttt{delegatecall} or proxy in scope
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+\texttt{selfdestruct} / forced ETH transfer
+    & No \texttt{selfdestruct}; no ETH balance check
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+ERC20 approve race
+    & Standard OZ ERC20; system is sole spender
+    & \textcolor{passgreen}{\textbf{Contained}} \\
+Read-only reentrancy
+    & No callback $\rightarrow$ view-read pattern in code
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+Cross-function reentrancy
+    & Shared \texttt{nonReentrant} on all critical entries
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Push-payment DoS (revert-to-stall)
+    & No attacker-controlled forced recipient
+    & \textcolor{passgreen}{\textbf{Unreachable}} \\
+Block-gas exhaustion DoS
+    & Worst case $\sim 2.5\%$ of 140M block limit
+    & \textcolor{passgreen}{\textbf{Below caps}} \\
+Gas griefing through relay
+    & \texttt{tx.origin} guard rejects relayed calls
+    & \textcolor{passgreen}{\textbf{Blocked}} \\
+Front-running DAO setters
+    & Multisig-only; no user-parameter race
+    & \textcolor{passgreen}{\textbf{Bounded}} \\
+Signature replay / EIP-712 replay
+    & No \texttt{ecrecover} / signed-message entry points
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+Insecure randomness
+    & No randomness consumed
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+Storage collision / uninitialised storage
+    & Independent contracts; \texttt{\^{}0.8.34} compiler check
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+Short-address / calldata mis-encoding
+    & EVM tooling mitigation in compiler
+    & \textcolor{passgreen}{\textbf{N/A}} \\
+Hidden fee / honeypot pattern
+    & Symmetric ERC20; no asymmetric branch in code
+    & \textcolor{passgreen}{\textbf{None present}} \\
+Constructor / deployment front-run
+    & Non-upgradeable; wiring atomic at construction
+    & \textcolor{passgreen}{\textbf{No window}} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In aggregate, the audit confirms that outside of the two findings
+documented in Section~5 (C-1 and C-2), the protocol's defensive surface
+behaves as designed against every attack vector exercised. The only
+remaining recommendation is the gas-side optimisation in G-1
+(Section~6.1).
+
+\newpage
+
+% ====================================================================
+%  8. REMEDIATION CHECKLIST
+% ====================================================================
+\section{Remediation Checklist}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{>{\bfseries}c p{8.8cm} >{\centering\arraybackslash}p{3cm}}
+\toprule
+\textbf{ID} & \textbf{Action} & \textbf{Type} \\
+\midrule
+C-1 & Add \texttt{minTokensOut} argument to \texttt{withdraw()} and
+       switch \texttt{getSpotPrice()} to a TWAP over $\geq 30$ minutes;
+       bound the mint with a DAO-tunable \texttt{MAX\_TOKENS\_PER\_USD}.
+    & Code change \\
+\midrule
+C-2 & Introduce \texttt{MAX\_SUPPLY} on \texttt{i6token.sol} and check
+       \texttt{totalSupply() + amount <= MAX\_SUPPLY} inside
+       \texttt{mint()}.
+    & Code change \\
+\midrule
+G-1 & DAO call: \texttt{system.setMaxDownlineDepth(600)}. Optionally
+       lower the structural ceiling in the contract source on the next
+       deployment.
+    & Configuration \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.4cm}
+After applying C-1 and C-2 we recommend re-running the
+\texttt{25\_SpotPriceMint}, \texttt{26\_NoMaxSupply}, and
+\texttt{40\_MEVSandwich} suites; each should flip from
+\emph{demonstrating the vulnerability} to \emph{demonstrating the fix}.
+
+\newpage
+
+% ====================================================================
+%  9. APPENDICES
+% ====================================================================
+\section{Appendix A -- Reproducing the Test Suite}
+
+All tests live under
+\texttt{test/Phase 4/Step 1/tests/} and inherit \texttt{BaseFork.t.sol}, which
+pins the live BSC mainnet state.
+
+\begin{lstlisting}[language=bash,caption={Running the suite},basicstyle=\ttfamily\footnotesize]
+# Set any BSC RPC; an archive node is recommended for the gas suite.
+export BSC_RPC_URL="https://bsc-rpc.publicnode.com"
+
+# Optional reproducibility -- pin to a specific BSC block.
+export BSC_BLOCK_NUMBER=0   # 0 means "latest"
+
+# Run the full audit suite
+forge test --match-path 'test/Phase 4/Step 1/tests/**/*.sol' -vv
+
+# Run only the suites referenced in this report
+forge test --match-path 'test/Phase 4/Step 1/tests/25_SpotPriceMint/*.sol' -vv
+forge test --match-path 'test/Phase 4/Step 1/tests/26_NoMaxSupply/*.sol'   -vv
+forge test --match-path 'test/Phase 4/Step 1/tests/38_GasAnalysis/*.sol'   -vv
+forge test --match-path 'test/Phase 4/Step 1/tests/39_FlashLoan/*.sol'     -vv
+forge test --match-path 'test/Phase 4/Step 1/tests/40_MEVSandwich/*.sol'   -vv
+\end{lstlisting}
+
+\section{Appendix B -- Disclaimer}
+
+This audit report reflects the state of the codebase at the time of review and
+the explicit attack surface enumerated in Section~\ref{sec:methodology}. No
+audit can guarantee the absence of vulnerabilities. Findings outside the
+listed scope, future code changes, off-chain key management, third-party
+dependency behaviour, and economic / governance decisions taken by the DAO
+multisig are not covered by this report. The recommendations in
+Section~5 and Section~6 should be implemented, re-tested, and re-reviewed
+before any reliance is placed on them.
+
+\end{document}

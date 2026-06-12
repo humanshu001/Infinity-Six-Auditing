@@ -1,6 +1,6 @@
 ==========================================================================
 41_StressSimulation -- 10,000-user economic stress + death-spiral run
-                       (LIVE pool: 756,000 USDT / 600,000 i6 = 1.26 USDT/i6)
+                       (LIVE pool: 595,320 USDT / 415,237 i6 = 1.4337 USDT/i6)
 ==========================================================================
 
 What this suite tests
@@ -12,11 +12,16 @@ liquidity and watch:
   * i6 totalSupply (mint inflation)
   * USDT pulled out vs USDT deposited
 
-Real liquidity used here
-------------------------
-  pool i6 reserve     = 600,000 i6
-  i6 price            = 1.26 USDT/i6
-  pool USDT reserve   = 600,000 * 1.26 = 756,000 USDT
+Real liquidity used here (read from BSC mainnet via `cast`)
+----------------------------------------------------------
+  pool USDT reserve   = 595,319.5685 USDT   (rounded to 595,320 for the seed)
+  pool i6   reserve   = 415,236.5148 i6     (rounded to 415,237 for the seed)
+  spot price          = 595,319.5685 / 415,236.5148 = 1.4337 USDT/i6
+  i6 totalSupply      = 596,909.6559 i6     (~69.6% sits in the LP)
+  i6 outside the LP   = 181,673.1411 i6     (the dumpable circulating amount)
+  Pair address        = 0x13D55200c298Ff1caE3136BE0dd889626DEAC782
+  USDT (BSC)          = 0x55d398326f99059fF775485246999027B3197955
+  i6 token            = 0xd2e052c7faE5DDeD7A7B2CdDd27B5d75D18A1593
 
 Tree (10,050 total invests)
 ---------------------------
@@ -38,7 +43,7 @@ match what would happen on real PancakeSwap under the same trades.
 
 Run command
 -----------
-Full 10k (default, ~36s):
+Full 10k (default, ~12s on this host):
   forge test --match-path 'test/Phase 4/Step 1/tests/41_StressSimulation/*.sol' -vv
 Smoke 1k:
   STRESS_USERS=1000 forge test --match-path 'test/Phase 4/Step 1/tests/41_StressSimulation/*.sol' -vv
@@ -49,7 +54,7 @@ Tests
 [PASS] test_AVERAGE_case_mid_liquidity_general_scenario (3x live pool)
 [PASS] test_WORST_case_thin_liquidity_stress            (LIVE pool)
 [PASS] test_DEATH_SPIRAL_progressive_drain              (LIVE pool, batched)
-Suite finished in ~48s.
+Suite finished in ~12s.
 
 Interactive charts
 ------------------
@@ -59,122 +64,123 @@ It uses Recharts (React + D3) via CDN, all data is inlined from this run,
 no internet required after page load except the CDN bundles.
 
 ==========================================================================
-TEST A -- BEST CASE  (deep pool 7,560,000 USDT / 6,000,000 i6 = 10x live)
+TEST A -- BEST CASE  (deep pool 5,953,200 USDT / 4,152,370 i6 = 10x live)
 ==========================================================================
 
 Spot trajectory (sampled every 1,000 actions):
-  seed             1.260 USDT/i6   reserves 7.560M USDT / 6.000M i6
-  invest@5000      1.362 USDT/i6   reserves 8.065M USDT / 5.923M i6
-  post-invest      1.463 USDT/i6   reserves 8.565M USDT / 5.853M i6
-  withdraw@5000    1.299 USDT/i6   reserves 8.071M USDT / 6.212M i6
-  post-withdraw    0.946 USDT/i6   reserves 6.890M USDT / 7.280M i6
+  seed             1.4337 USDT/i6   reserves 5.9532M USDT / 4.1524M i6
+  invest@5000      1.5807 USDT/i6   reserves 6.4583M USDT / 4.0858M i6
+  post-invest      1.7284 USDT/i6   reserves 6.9582M USDT / 4.0258M i6
+  withdraw@5000    1.4915 USDT/i6   reserves 6.4644M USDT / 4.3341M i6
+  post-withdraw    0.9958 USDT/i6   reserves 5.2833M USDT / 5.3056M i6
 
 Final accounting:
-  total USDT invested by users         1,005,000   USDT
-  total USDT extracted via sells       1,674,886   USDT
-  total i6 minted to withdrawers       1,426,790   i6
-  pool USDT reserve                    6,890,114   USDT
-  pool i6   reserve                    7,279,962   i6
-  i6 totalSupply                      13,279,962   i6  (1.11x seed)
-  spot USDT/i6                              0.9464
+  total USDT invested by users         1,005,000      USDT
+  total USDT extracted via sells       1,674,874      USDT
+  total i6 minted to withdrawers       1,279,872      i6
+  pool USDT reserve                    5,283,326      USDT
+  pool i6   reserve                    5,305,635      i6
+  i6 totalSupply                       9,458,005      i6   (1.14x seed)
+  spot USDT/i6                              0.9958
   payback ratio (out / in)                166.6%
 
 Plain English (BEST)
 --------------------
 With ~10x the live liquidity, the pool absorbed everything cleanly. Spot
-drifted from 1.26 to 0.95 (a 25% drop) over the entire 20k-action run.
-i6 supply grew only 11%. Users collectively pulled out 1.67x what they put
+drifted from 1.4337 to 0.9958 (a ~31% drop) over the entire 20k-action run.
+i6 supply grew only ~14%. Users collectively pulled out 1.67x what they put
 in (the surplus comes from 30-day RWP plus genesis seed cycling through
 ORIGIN withdraws). This is the "operating safely" picture.
 
 ==========================================================================
-TEST AVG -- AVERAGE CASE  (3x live pool: 2,268,000 USDT / 1,800,000 i6)
+TEST AVG -- AVERAGE CASE  (3x live pool: 1,785,960 USDT / 1,245,711 i6)
 ==========================================================================
 
 This is the "general scenario" -- pool is bigger than live but not deep.
-Same 1.26 USDT/i6 starting spot, 3x the depth of WORST.
+Same 1.4337 USDT/i6 starting spot, 3x the depth of WORST.
 
 Spot trajectory (sampled every 1,000 actions):
-  seed (3x live)   1.260 USDT/i6   reserves 2.268M USDT / 1.800M i6
-  invest@5000      1.603 USDT/i6   reserves 2.773M USDT / 1.730M i6
-  post-invest      1.956 USDT/i6   reserves 3.273M USDT / 1.674M i6
-  withdraw@5000    1.410 USDT/i6   reserves 2.779M USDT / 1.972M i6
-  withdraw@9000    0.614 USDT/i6   reserves 1.835M USDT / 2.990M i6
-  post-withdraw    0.466 USDT/i6   reserves 1.598M USDT / 3.434M i6
+  seed (3x live)   1.4337 USDT/i6   reserves 1.7860M USDT / 1.2457M i6
+  invest@5000      1.9324 USDT/i6   reserves 2.2911M USDT / 1.1856M i6
+  post-invest      2.4481 USDT/i6   reserves 2.7910M USDT / 1.1401M i6
+  withdraw@5000    1.6577 USDT/i6   reserves 2.2972M USDT / 1.3858M i6
+  withdraw@9000    0.5742 USDT/i6   reserves 1.3528M USDT / 2.3563M i6
+  post-withdraw    0.3907 USDT/i6   reserves 1.1162M USDT / 2.8571M i6
 
 Final accounting:
-  total USDT invested by users         1,005,000   USDT
-  total USDT extracted via sells       1,674,779   USDT
-  total i6 minted to withdrawers       1,759,921   i6
-  pool USDT reserve                    1,598,221   USDT      (30% drained)
-  pool i6   reserve                    3,433,513   i6        (1.91x seed)
-  i6 totalSupply                       5,233,513   i6        (1.45x seed)
-  spot USDT/i6                              0.4655           (63% drop)
+  total USDT invested by users         1,005,000      USDT
+  total USDT extracted via sells       1,674,734      USDT
+  total i6 minted to withdrawers       1,717,056      i6
+  pool USDT reserve                    1,116,226      USDT      (37% drained)
+  pool i6   reserve                    2,857,121      i6        (2.29x seed)
+  i6 totalSupply                       4,102,832      i6        (1.65x seed)
+  spot USDT/i6                              0.3907              (-73%)
   payback ratio (out / in)                166.6%
 
 Plain English (AVERAGE)
 -----------------------
-At 3x live liquidity, the system survived but bled: spot dropped from 1.26
-to 0.47 (63%), pool USDT drained 30%, and i6 supply grew 45%. This is
+At 3x live liquidity, the system survived but bled: spot dropped from 1.4337
+to 0.3907 (-73%), pool USDT drained 37%, and i6 supply grew 65%. This is
 neither catastrophic (WORST) nor smooth (BEST) -- it is the realistic
 "general scenario" where the protocol shows visible stress but does not
 collapse.
 
-  Phase 1 (INVEST): spot pumped 55% (1.26 -> 1.96) from the 600k USDT in
-  cumulative buys against a 2.27M seed.
+  Phase 1 (INVEST): spot pumped 71% (1.43 -> 2.45) from the 600k USDT in
+  cumulative buys against a 1.79M seed.
 
-  Phase 2 (WITHDRAW + DUMP): spot fell 76% (1.96 -> 0.47) from withdrawer
+  Phase 2 (WITHDRAW + DUMP): spot fell 84% (2.45 -> 0.39) from withdrawer
   dumps. Did NOT enter the runaway-mint zone because pool USDT still had
   enough reserve to absorb the dumps.
 
 This case is the warning sign -- the live pool (WORST) is 3x smaller and
-already crashes 150x under identical load.
+already crashes catastrophically under identical load.
 
 ==========================================================================
-TEST B -- WORST CASE  (LIVE pool 756,000 USDT / 600,000 i6)
+TEST B -- WORST CASE  (LIVE pool 595,320 USDT / 415,237 i6)
 ==========================================================================
 
 Spot trajectory (sampled every 1,000 actions):
-  seed (LIVE)      1.260 USDT/i6   reserves 756k USDT / 600k i6
-  invest@1000      1.473 USDT/i6   reserves 861k USDT / 585k i6
-  invest@5000      2.327 USDT/i6   reserves 1.261M USDT / 542k i6
-  invest@9000      3.237 USDT/i6   reserves 1.661M USDT / 513k i6
-  post-invest      3.471 USDT/i6   reserves 1.761M USDT / 507k i6
-  withdraw@1000    3.364 USDT/i6   reserves 1.733M USDT / 515k i6
-  withdraw@5000    1.796 USDT/i6   reserves 1.267M USDT / 705k i6
-  withdraw@7000    0.709 USDT/i6   reserves 797k USDT / 1.123M i6
-  withdraw@9000    0.116 USDT/i6   reserves 323k USDT / 2.777M i6
-  post-withdraw    0.0084 USDT/i6  reserves 86.7k USDT / 10.376M i6
+  seed (LIVE)      1.4337  USDT/i6   reserves 595,320 USDT / 415,237 i6
+  invest@1000      1.7421  USDT/i6   reserves 700,420 USDT / 402,048 i6
+  invest@5000      2.9939  USDT/i6   reserves 1,100,420 USDT / 367,559 i6
+  invest@9000      4.3413  USDT/i6   reserves 1,500,420 USDT / 345,617 i6
+  post-invest      4.6900  USDT/i6   reserves 1,600,320 USDT / 341,223 i6
+  withdraw@1000    4.5297  USDT/i6   reserves 1,572,781 USDT / 347,213 i6
+  withdraw@5000    2.2405  USDT/i6   reserves 1,106,603 USDT / 493,917 i6
+  withdraw@7000    0.7392  USDT/i6   reserves 636,052 USDT / 860,511 i6
+  withdraw@9000    0.0481  USDT/i6   reserves 162,562 USDT / 3,378,415 i6
+  post-withdraw    0.0000  USDT/i6   reserves 0.0000 USDT / 1.56e15 i6
 
 Final accounting:
-  total USDT invested by users         1,005,000      USDT
-  total USDT extracted via sells       1,674,251      USDT
-  total i6 minted to withdrawers       9,775,783      i6
-  pool USDT reserve                       86,748      USDT      (88.5% drained)
-  pool i6   reserve                   10,375,783      i6        (17.3x seed)
-  i6 totalSupply                      10,975,783      i6        (9.1x seed)
-  spot USDT/i6                              0.0084              (150x crash)
-  payback ratio (out / in)                166.5%
+  total USDT invested by users         1,005,000             USDT
+  total USDT extracted via sells       1,600,320             USDT
+  total i6 minted to withdrawers       2.16e19               i6   (hyper-inflation)
+  pool USDT reserve                    ~ 0 (26,134,796,053 wei = ~2.6e-8 USDT)
+  pool i6   reserve                    1.56e15               i6
+  i6 totalSupply                       2.16e19               i6   (~3.6e13x seed)
+  spot USDT/i6                              0  (rounds to zero in WAD)
+  payback ratio (out / in)                159.2%
 
 Plain English (WORST)
 ---------------------
 This IS the live pool. With 10k users running through invest then
-withdraw+dump, the pool ends 88% drained and the price collapses 150x
-(from 1.26 to 0.0084). i6 supply inflates 9x. The contract never
-reverted -- nothing capped the mint, nothing protected withdrawers from
-the falling price.
+withdraw+dump, the pool is **completely drained of USDT** and the price
+collapses to ZERO. i6 supply hyper-inflates to ~2.16e19 i6 (21.6
+quintillion). The contract never reverted -- nothing capped the mint,
+nothing protected withdrawers from the falling price.
 
   Phase 1 (INVEST):
     The 60% USDT-to-i6 swap on every invest is a buy. Cumulative 600k USDT
-    in buys against the 756k seed pumped spot from 1.26 to 3.47 -- a
-    2.75x pump just from organic invest activity.
+    in buys against the 595k seed pumped spot from 1.43 to 4.69 -- a
+    3.27x pump just from organic invest activity (steeper than the 756k
+    placeholder run because the live pool is shallower).
 
   Phase 2 (WITHDRAW + DUMP):
     Each withdrawer mints i6 against the live spot price and immediately
     sells. As sells push spot down, the next withdrawer mints MORE i6
     (formula `usdtReward * 1e18 / spotPrice` amplifies as denominator
-    shrinks), then dumps more. Spot fell from 3.47 -> 0.0084 over the
-    10k withdraw run -- 413x collapse during withdraw phase alone.
+    shrinks), then dumps more. Spot fell from 4.69 -> 0 over the
+    10k withdraw run -- a total wipe-out during the withdraw phase.
 
 ==========================================================================
 TEST C -- DEATH SPIRAL  (LIVE pool, 10 batched withdraw waves of 1,000)
@@ -183,49 +189,52 @@ TEST C -- DEATH SPIRAL  (LIVE pool, 10 batched withdraw waves of 1,000)
 Same seed and same users as WORST, but withdraws executed in 10
 sequential waves of 1,000. Per-wave damage made visible:
 
-  Wave  i6 minted (i6)     USDT pulled       Pool USDT after    Spot after
-  ----  ---------------    --------------    ---------------    -----------
-   1          8,067              27,498           1,733,502        16.930
-   2         17,176              55,775           1,677,727        15.220
-   3         30,472              90,586           1,587,141        12.638
-   4         51,815             133,442           1,453,700         9.272
-   5         90,563             186,206           1,267,494         5.446
-   6        159,904             233,707           1,033,786         2.077
-   7        257,885             236,845             796,942         0.289
-   8        476,294             236,823             560,119         0.008
-   9      1,175,059             236,776             323,343         0.0001
-  10      7,601,268             236,595              86,748         0.000008
+  Wave  i6 minted (i6)        USDT pulled       Pool USDT after    Spot after
+  ----  ------------------    --------------    ---------------    -----------
+   1            5,980.85           27,498.43         1,572,821.57       4.530
+   2           12,797.54           55,774.37         1,517,047.20       4.214
+   3           22,920.32           90,584.98         1,426,462.22       3.725
+   4           39,621.60          133,440.25         1,293,021.97       3.060
+   5           71,277.83          186,202.86         1,106,819.10       2.241
+   6          132,548.15          233,699.09           873,120.01       1.394
+   7          233,820.90          236,831.30           636,288.71       0.740
+   8          511,469.30          236,796.01           399,492.70       0.291
+   9        2,001,834.60          236,693.69           162,799.02       0.048
+  10  21,591,128,208,491,520,000  162,799.02                0.00       0.000
 
-  Note: the spot at "after wave 1" reads 16.93 because wave 1's first
-  withdraws happen against the post-invest spot of 3.47, but each user's
-  withdraw mints i6 and dumps it via the router, which pushes spot up
-  briefly as the system also adds to pool USDT during withdraw's mint
-  path through addLiquidity. The TREND is dominated by the dumps, which
-  push spot down monotonically wave-over-wave from wave 1 onward.
+  Note: the wave-end spot decays monotonically from 4.53 down to 0 across
+  the 10 waves because dumping minted i6 into the pool is what depresses
+  the spot. Wave 10's per-user mint is so enormous because spot at the
+  start of the wave was already ~0.048, so each withdrawer at that point
+  mints 1/(0.048) ~= 20x more i6 per USDT reward than at baseline.
 
 Final accounting (DEATH SPIRAL):
-  total USDT invested by users         1,005,000      USDT
-  total USDT extracted via sells       1,674,251      USDT
-  total i6 minted to withdrawers       9,868,504      i6
-  pool USDT reserve                       86,748      USDT
-  pool i6   reserve                   10,375,783      i6
-  i6 totalSupply                      10,975,783      i6
-  spot USDT/i6                              0.0084
-  payback ratio (out / in)                166.5%
+  total USDT invested by users         1,005,000             USDT
+  total USDT extracted via sells       1,600,320             USDT
+  total i6 minted to withdrawers       2.16e19               i6
+  pool USDT reserve                    ~ 0 (26,134,796,053 wei)
+  pool i6   reserve                    1.56e15               i6
+  i6 totalSupply                       2.16e19               i6
+  spot USDT/i6                              0
+  payback ratio (out / in)                159.2%
 
 Verdict (test output):
-  spot below 0.01 USDT/i6 -- 100x+ collapse confirmed
-  final spot              0.0084 USDT/i6
-  final supply            10,975,783 i6
-  USDT pulled / deposited 166.5%
+  pool USDT reserve below 1k -- pool effectively drained
+  pool i6 reserve above 100M -- dump side saturated
+  spot below 0.01 USDT/i6   -- 100x+ collapse confirmed
+  i6 totalSupply above 100M -- mint inflation visible
+  final spot              0.000000 USDT/i6
+  final supply            2.16e19 i6
+  USDT pulled / deposited 159.2%
 
 Plain English (DEATH SPIRAL)
 ----------------------------
-Waves 1 -> 7 drain ~92% of pool USDT (1,761,000 -> 141,217). By wave 8
-the pool is in collapse territory. Waves 8-10 mint i6 against a near-zero
-spot, producing huge amounts -- wave 10 alone mints 7.6M i6 (vs wave 1's
-8,067 -- a 942x jump per user). USDT pulled per wave plateaus around
-236k because there is simply nothing left in the pool to extract.
+Waves 1 -> 7 drain ~60% of pool USDT (1.60M -> 0.64M). By wave 8 the pool
+is in collapse territory. Waves 8-10 mint i6 against a near-zero spot,
+producing astronomic amounts -- wave 10 alone mints 2.16e19 i6 (vs wave 1's
+5,981 -- a 3.6e15x jump per user). USDT pulled per wave plateaus and then
+shrinks below 240k because there is simply nothing left in the pool to
+extract.
 
 ==========================================================================
 What this proves about the open audit findings
@@ -234,13 +243,14 @@ What this proves about the open audit findings
 C-1 (SpotPriceMint, no `minTokensOut` on withdraw):
   Without a slippage guard, every withdrawer mints against the live spot.
   When earlier dumps crash spot, later withdrawers mint geometrically
-  more tokens. On the LIVE pool this took the spot from 1.26 to 0.0084
-  in a single 10k-user run.
+  more tokens. On the LIVE pool this took the spot from 1.4337 to 0 in
+  a single 10k-user run, and drained the entire 595,320 USDT of LP
+  collateral.
 
 C-2 (NoMaxSupply on i6 token):
-  9.1x supply inflation happened with NO revert, NO cap, NO event. The
-  protocol let the mint formula run all the way to 10.97M i6 against a
-  150x price collapse.
+  ~3.6e13x supply inflation happened with NO revert, NO cap, NO event.
+  The protocol let the mint formula run all the way to 2.16e19 i6 against
+  a complete price collapse.
 
 Renouncing the DAO does NOT touch these paths:
   * `withdraw()` is user-callable, not DAO-gated.

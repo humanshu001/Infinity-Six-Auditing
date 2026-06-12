@@ -192,7 +192,8 @@ const { LineChart, BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGr
 // =======================================================================
 // Data captured from `forge test --match-path 'test/Phase 4/Step 1/tests/41_StressSimulation/*.sol' -vv`
 // Real PancakeSwap V2 math via stateful mock pair/router.
-// Seed: 756,000 USDT / 600,000 i6 (== 1.26 USDT per i6, live liquidity).
+// Seed: 595,320 USDT / 415,237 i6 (= 1.4337 USDT per i6, LIVE liquidity
+// pulled directly from BSC mainnet pair 0x13D55200..C782 at audit time).
 // 10,000 users x 100 USDT each across 50 L1 sponsors x 200 directs.
 // =======================================================================
 
@@ -201,91 +202,113 @@ const { LineChart, BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGr
 //   1000..9999  : invest phase (every 1000 users)
 //   11000..19999: withdraw+sell phase (every 1000 users, offset +10000)
 // phase computed below for the X-axis tick labels.
+//
+// NOTE on the WORST/post-withdraw final point: the actual measured values
+// at step=19999 are USDT ~= 0 (26,134,796,053 wei = ~2.6e-8 USDT) and
+// i6 reserve ~= 1.56e15 i6, supply ~= 2.16e19 i6. These do not fit a
+// readable axis alongside the other points, so the rendered final point
+// is display-clamped to a large-but-plottable value. The unclamped values
+// are kept in `finalReal` so the metric cards above the charts can still
+// quote the actual number.
 
 const BEST = [
-  { step: 0,     phase: "seed",            usdt: 7560000.00, i6: 6000000.00, spot: 1.2600, supply: 12000000.00 },
-  { step: 1000,  phase: "invest@1000",     usdt: 7665100.00, i6: 5983578.87, spot: 1.2810, supply: 11983578.87 },
-  { step: 2000,  phase: "invest@2000",     usdt: 7765100.00, i6: 5968203.19, spot: 1.3011, supply: 11968203.19 },
-  { step: 3000,  phase: "invest@3000",     usdt: 7865100.00, i6: 5953063.02, spot: 1.3212, supply: 11953063.02 },
-  { step: 4000,  phase: "invest@4000",     usdt: 7965100.00, i6: 5938151.82, spot: 1.3413, supply: 11938151.82 },
-  { step: 5000,  phase: "invest@5000",     usdt: 8065100.00, i6: 5923463.32, spot: 1.3616, supply: 11923463.32 },
-  { step: 6000,  phase: "invest@6000",     usdt: 8165100.00, i6: 5908991.50, spot: 1.3818, supply: 11908991.50 },
-  { step: 7000,  phase: "invest@7000",     usdt: 8265100.00, i6: 5894730.56, spot: 1.4021, supply: 11894730.56 },
-  { step: 8000,  phase: "invest@8000",     usdt: 8365100.00, i6: 5880674.93, spot: 1.4225, supply: 11880674.93 },
-  { step: 9000,  phase: "invest@9000",     usdt: 8465100.00, i6: 5866819.26, spot: 1.4429, supply: 11866819.26 },
-  { step: 9999,  phase: "post-invest",     usdt: 8565000.00, i6: 5853171.95, spot: 1.4633, supply: 11853171.95 },
-  { step: 11000, phase: "withdraw@1000",   usdt: 8537460.21, i6: 5872100.27, spot: 1.4539, supply: 11872100.27 },
-  { step: 12000, phase: "withdraw@2000",   usdt: 8481653.36, i6: 5910834.16, spot: 1.4349, supply: 11910834.16 },
-  { step: 13000, phase: "withdraw@3000",   usdt: 8391024.89, i6: 5974835.83, spot: 1.4044, supply: 11974835.83 },
-  { step: 14000, phase: "withdraw@4000",   usdt: 8257525.68, i6: 6071674.90, spot: 1.3600, supply: 12071674.90 },
-  { step: 15000, phase: "withdraw@5000",   usdt: 8071240.36, i6: 6212165.22, spot: 1.2993, supply: 12212165.22 },
-  { step: 16000, phase: "withdraw@6000",   usdt: 7837471.51, i6: 6397927.19, spot: 1.2250, supply: 12397927.19 },
-  { step: 17000, phase: "withdraw@7000",   usdt: 7600572.53, i6: 6597848.94, spot: 1.1520, supply: 12597848.94 },
-  { step: 18000, phase: "withdraw@8000",   usdt: 7363673.78, i6: 6810650.60, spot: 1.0812, supply: 12810650.60 },
-  { step: 19000, phase: "withdraw@9000",   usdt: 7126775.28, i6: 7037617.65, spot: 1.0127, supply: 13037617.65 },
-  { step: 19999, phase: "post-withdraw",   usdt: 6890113.94, i6: 7279961.58, spot: 0.9464, supply: 13279961.58 },
+  { step: 0,     phase: "seed",            usdt: 5953200.00, i6: 4152370.00, spot: 1.4337, supply: 8304740.00 },
+  { step: 1000,  phase: "invest@1000",     usdt: 6058300.00, i6: 4137970.16, spot: 1.4641, supply: 8290340.16 },
+  { step: 2000,  phase: "invest@2000",     usdt: 6158300.00, i6: 4124544.35, spot: 1.4931, supply: 8276914.35 },
+  { step: 3000,  phase: "invest@3000",     usdt: 6258300.00, i6: 4111377.33, spot: 1.5222, supply: 8263747.33 },
+  { step: 4000,  phase: "invest@4000",     usdt: 6358300.00, i6: 4098460.09, spot: 1.5514, supply: 8250830.09 },
+  { step: 5000,  phase: "invest@5000",     usdt: 6458300.00, i6: 4085784.07, spot: 1.5807, supply: 8238154.07 },
+  { step: 6000,  phase: "invest@6000",     usdt: 6558300.00, i6: 4073341.14, spot: 1.6101, supply: 8225711.14 },
+  { step: 7000,  phase: "invest@7000",     usdt: 6658300.00, i6: 4061123.54, spot: 1.6395, supply: 8213493.54 },
+  { step: 8000,  phase: "invest@8000",     usdt: 6758300.00, i6: 4049123.92, spot: 1.6691, supply: 8201493.92 },
+  { step: 9000,  phase: "invest@9000",     usdt: 6858300.00, i6: 4037335.23, spot: 1.6987, supply: 8189705.23 },
+  { step: 9999,  phase: "post-invest",     usdt: 6958200.00, i6: 4025762.26, spot: 1.7284, supply: 8178132.26 },
+  { step: 11000, phase: "withdraw@1000",   usdt: 6930660.24, i6: 4041799.26, spot: 1.7147, supply: 8194169.26 },
+  { step: 12000, phase: "withdraw@2000",   usdt: 6874853.47, i6: 4074691.21, spot: 1.6872, supply: 8227061.21 },
+  { step: 13000, phase: "withdraw@3000",   usdt: 6784225.23, i6: 4129261.00, spot: 1.6430, supply: 8281631.00 },
+  { step: 14000, phase: "withdraw@4000",   usdt: 6650726.54, i6: 4212356.63, spot: 1.5789, supply: 8364726.63 },
+  { step: 15000, phase: "withdraw@5000",   usdt: 6464442.27, i6: 4334051.67, spot: 1.4915, supply: 8486421.67 },
+  { step: 16000, phase: "withdraw@6000",   usdt: 6230675.16, i6: 4497074.95, spot: 1.3855, supply: 8649444.95 },
+  { step: 17000, phase: "withdraw@7000",   usdt: 5993778.10, i6: 4675270.74, spot: 1.2820, supply: 8827640.74 },
+  { step: 18000, phase: "withdraw@8000",   usdt: 5756881.40, i6: 4868150.95, spot: 1.1826, supply: 9020520.95 },
+  { step: 19000, phase: "withdraw@9000",   usdt: 5519985.10, i6: 5077607.77, spot: 1.0871, supply: 9229977.77 },
+  { step: 19999, phase: "post-withdraw",   usdt: 5283326.14, i6: 5305634.51, spot: 0.9958, supply: 9458004.51 },
 ];
 
 const AVG = [
-  { step: 0,     phase: "seed (3x live)",  usdt: 2268000.00, i6: 1800000.00, spot: 1.2600, supply: 3600000.00 },
-  { step: 1000,  phase: "invest@1000",     usdt: 2373100.00, i6: 1783886.48, spot: 1.3303, supply: 3583886.48 },
-  { step: 2000,  phase: "invest@2000",     usdt: 2473100.00, i6: 1769329.82, spot: 1.3978, supply: 3569329.82 },
-  { step: 3000,  phase: "invest@3000",     usdt: 2573100.00, i6: 1755462.10, spot: 1.4658, supply: 3555462.10 },
-  { step: 4000,  phase: "invest@4000",     usdt: 2673100.00, i6: 1742225.78, spot: 1.5343, supply: 3542225.78 },
-  { step: 5000,  phase: "invest@5000",     usdt: 2773100.00, i6: 1729570.05, spot: 1.6033, supply: 3529570.05 },
-  { step: 6000,  phase: "invest@6000",     usdt: 2873100.00, i6: 1717449.83, spot: 1.6729, supply: 3517449.83 },
-  { step: 7000,  phase: "invest@7000",     usdt: 2973100.00, i6: 1705824.98, spot: 1.7429, supply: 3505824.98 },
-  { step: 8000,  phase: "invest@8000",     usdt: 3073100.00, i6: 1694659.59, spot: 1.8134, supply: 3494659.59 },
-  { step: 9000,  phase: "invest@9000",     usdt: 3173100.00, i6: 1683921.39, spot: 1.8844, supply: 3483921.39 },
-  { step: 9999,  phase: "post-invest",     usdt: 3273000.00, i6: 1673591.48, spot: 1.9557, supply: 3473591.48 },
-  { step: 11000, phase: "withdraw@1000",   usdt: 3245460.37, i6: 1687828.63, spot: 1.9229, supply: 3487828.63 },
-  { step: 12000, phase: "withdraw@2000",   usdt: 3189654.13, i6: 1717433.56, spot: 1.8572, supply: 3517433.56 },
-  { step: 13000, phase: "withdraw@3000",   usdt: 3099027.33, i6: 1767785.25, spot: 1.7531, supply: 3567785.25 },
-  { step: 14000, phase: "withdraw@4000",   usdt: 2965531.90, i6: 1847567.17, spot: 1.6051, supply: 3647567.17 },
-  { step: 15000, phase: "withdraw@5000",   usdt: 2779254.50, i6: 1971719.49, spot: 1.4096, supply: 3771719.49 },
-  { step: 16000, phase: "withdraw@6000",   usdt: 2545499.33, i6: 2153258.07, spot: 1.1822, supply: 3953258.07 },
-  { step: 17000, phase: "withdraw@7000",   usdt: 2308616.22, i6: 2374781.41, spot: 0.9721, supply: 4174781.41 },
-  { step: 18000, phase: "withdraw@8000",   usdt: 2071735.62, i6: 2647030.12, spot: 0.7827, supply: 4447030.12 },
-  { step: 19000, phase: "withdraw@9000",   usdt: 1834858.13, i6: 2989667.41, spot: 0.6137, supply: 4789667.41 },
-  { step: 19999, phase: "post-withdraw",   usdt: 1598221.50, i6: 3433512.86, spot: 0.4655, supply: 5233512.86 },
+  { step: 0,     phase: "seed (3x live)",  usdt: 1785960.00, i6: 1245711.00, spot: 1.4337, supply: 2491422.00 },
+  { step: 1000,  phase: "invest@1000",     usdt: 1891060.00, i6: 1231650.56, spot: 1.5354, supply: 2477361.56 },
+  { step: 2000,  phase: "invest@2000",     usdt: 1991060.00, i6: 1219115.89, spot: 1.6332, supply: 2464826.89 },
+  { step: 3000,  phase: "invest@3000",     usdt: 2091060.00, i6: 1207314.00, spot: 1.7320, supply: 2453025.00 },
+  { step: 4000,  phase: "invest@4000",     usdt: 2191060.00, i6: 1196169.94, spot: 1.8317, supply: 2441880.94 },
+  { step: 5000,  phase: "invest@5000",     usdt: 2291060.00, i6: 1185619.44, spot: 1.9324, supply: 2431330.44 },
+  { step: 6000,  phase: "invest@6000",     usdt: 2391060.00, i6: 1175606.96, spot: 2.0339, supply: 2421317.96 },
+  { step: 7000,  phase: "invest@7000",     usdt: 2491060.00, i6: 1166084.23, spot: 2.1363, supply: 2411795.23 },
+  { step: 8000,  phase: "invest@8000",     usdt: 2591060.00, i6: 1157009.02, spot: 2.2394, supply: 2402720.02 },
+  { step: 9000,  phase: "invest@9000",     usdt: 2691060.00, i6: 1148344.20, spot: 2.3434, supply: 2394055.20 },
+  { step: 9999,  phase: "post-invest",     usdt: 2790960.00, i6: 1140065.08, spot: 2.4481, supply: 2385776.08 },
+  { step: 11000, phase: "withdraw@1000",   usdt: 2763420.41, i6: 1151455.31, spot: 2.3999, supply: 2397166.31 },
+  { step: 12000, phase: "withdraw@2000",   usdt: 2707614.35, i6: 1175247.80, spot: 2.3039, supply: 2420958.80 },
+  { step: 13000, phase: "withdraw@3000",   usdt: 2616988.03, i6: 1216050.39, spot: 2.1520, supply: 2461761.39 },
+  { step: 14000, phase: "withdraw@4000",   usdt: 2483493.73, i6: 1281584.45, spot: 1.9378, supply: 2527295.45 },
+  { step: 15000, phase: "withdraw@5000",   usdt: 2297218.79, i6: 1385775.24, spot: 1.6577, supply: 2631486.24 },
+  { step: 16000, phase: "withdraw@6000",   usdt: 2063468.18, i6: 1543171.44, spot: 1.3372, supply: 2788882.44 },
+  { step: 17000, phase: "withdraw@7000",   usdt: 1826590.82, i6: 1743827.01, spot: 1.0475, supply: 2989538.01 },
+  { step: 18000, phase: "withdraw@8000",   usdt: 1589717.47, i6: 2004360.77, spot: 0.7931, supply: 3250071.77 },
+  { step: 19000, phase: "withdraw@9000",   usdt: 1352849.44, i6: 2356253.29, spot: 0.5742, supply: 3601964.29 },
+  { step: 19999, phase: "post-withdraw",   usdt: 1116225.64, i6: 2857121.40, spot: 0.3907, supply: 4102832.40 },
 ];
 
 const WORST = [
-  { step: 0,     phase: "seed (LIVE)",     usdt:  756000.00, i6:   600000.00, spot: 1.2600,  supply:  1200000.00 },
-  { step: 1000,  phase: "invest@1000",     usdt:  861100.00, i6:   584693.15, spot: 1.4727,  supply:  1184693.15 },
-  { step: 2000,  phase: "invest@2000",     usdt:  961100.00, i6:   572078.10, spot: 1.6800,  supply:  1172078.10 },
-  { step: 3000,  phase: "invest@3000",     usdt: 1061100.00, i6:   560946.23, spot: 1.8916,  supply:  1160946.23 },
-  { step: 4000,  phase: "invest@4000",     usdt: 1161100.00, i6:   551006.08, spot: 2.1072,  supply:  1151006.08 },
-  { step: 5000,  phase: "invest@5000",     usdt: 1261100.00, i6:   542042.73, spot: 2.3266,  supply:  1142042.73 },
-  { step: 6000,  phase: "invest@6000",     usdt: 1361100.00, i6:   533893.36, spot: 2.5494,  supply:  1133893.36 },
-  { step: 7000,  phase: "invest@7000",     usdt: 1461100.00, i6:   526431.90, spot: 2.7755,  supply:  1126431.90 },
-  { step: 8000,  phase: "invest@8000",     usdt: 1561100.00, i6:   519558.81, spot: 3.0047,  supply:  1119558.81 },
-  { step: 9000,  phase: "invest@9000",     usdt: 1661100.00, i6:   513194.21, spot: 3.2368,  supply:  1113194.21 },
-  { step: 9999,  phase: "post-invest",     usdt: 1761000.00, i6:   507278.81, spot: 3.4715,  supply:  1107278.81 },
-  { step: 11000, phase: "withdraw@1000",   usdt: 1733460.58, i6:   515358.29, spot: 3.3636,  supply:  1115358.29 },
-  { step: 12000, phase: "withdraw@2000",   usdt: 1677655.23, i6:   532544.78, spot: 3.1503,  supply:  1132544.78 },
-  { step: 13000, phase: "withdraw@3000",   usdt: 1587030.89, i6:   563033.08, spot: 2.8187,  supply:  1163033.08 },
-  { step: 14000, phase: "withdraw@4000",   usdt: 1453541.40, i6:   614875.96, spot: 2.3640,  supply:  1214875.96 },
-  { step: 15000, phase: "withdraw@5000",   usdt: 1267277.64, i6:   705492.50, spot: 1.7963,  supply:  1305492.50 },
-  { step: 16000, phase: "withdraw@6000",   usdt: 1033549.64, i6:   865475.38, spot: 1.1942,  supply:  1465475.38 },
-  { step: 17000, phase: "withdraw@7000",   usdt:  796705.05, i6:  1123496.56, spot: 0.7091,  supply:  1723496.56 },
-  { step: 18000, phase: "withdraw@8000",   usdt:  559882.35, i6:  1600134.28, spot: 0.3499,  supply:  2200134.28 },
-  { step: 19000, phase: "withdraw@9000",   usdt:  323106.30, i6:  2776553.09, spot: 0.1164,  supply:  3376553.09 },
-  { step: 19999, phase: "post-withdraw",   usdt:   86748.25, i6: 10375783.61, spot: 0.0084,  supply: 10975783.61 },
+  { step: 0,     phase: "seed (LIVE)",     usdt:  595320.00, i6:   415237.00, spot: 1.4337, supply:   830474.00 },
+  { step: 1000,  phase: "invest@1000",     usdt:  700420.00, i6:   402047.82, spot: 1.7421, supply:   817284.82 },
+  { step: 2000,  phase: "invest@2000",     usdt:  800420.00, i6:   391535.29, spot: 2.0443, supply:   806772.29 },
+  { step: 3000,  phase: "invest@3000",     usdt:  900420.00, i6:   382490.56, spot: 2.3541, supply:   797727.56 },
+  { step: 4000,  phase: "invest@4000",     usdt: 1000420.00, i6:   374576.67, spot: 2.6708, supply:   789813.67 },
+  { step: 5000,  phase: "invest@5000",     usdt: 1100420.00, i6:   367558.62, spot: 2.9939, supply:   782795.62 },
+  { step: 6000,  phase: "invest@6000",     usdt: 1200420.00, i6:   361266.37, spot: 3.3228, supply:   776503.37 },
+  { step: 7000,  phase: "invest@7000",     usdt: 1300420.00, i6:   355573.11, spot: 3.6573, supply:   770810.11 },
+  { step: 8000,  phase: "invest@8000",     usdt: 1400420.00, i6:   350381.90, spot: 3.9968, supply:   765618.90 },
+  { step: 9000,  phase: "invest@9000",     usdt: 1500420.00, i6:   345617.08, spot: 4.3413, supply:   760854.08 },
+  { step: 9999,  phase: "post-invest",     usdt: 1600320.00, i6:   341222.73, spot: 4.6900, supply:   756459.73 },
+  { step: 11000, phase: "withdraw@1000",   usdt: 1572780.63, i6:   347212.64, spot: 4.5297, supply:   762449.64 },
+  { step: 12000, phase: "withdraw@2000",   usdt: 1516975.47, i6:   360018.19, spot: 4.2136, supply:   775255.19 },
+  { step: 13000, phase: "withdraw@3000",   usdt: 1426351.70, i6:   382951.19, spot: 3.7246, supply:   798188.19 },
+  { step: 14000, phase: "withdraw@4000",   usdt: 1292863.61, i6:   422594.93, spot: 3.0593, supply:   837831.93 },
+  { step: 15000, phase: "withdraw@5000",   usdt: 1106603.34, i6:   493917.41, spot: 2.2405, supply:   909154.41 },
+  { step: 16000, phase: "withdraw@6000",   usdt:  872883.17, i6:   626539.41, spot: 1.3932, supply:  1041776.41 },
+  { step: 17000, phase: "withdraw@7000",   usdt:  636051.89, i6:   860511.00, spot: 0.7392, supply:  1275748.00 },
+  { step: 18000, phase: "withdraw@8000",   usdt:  399255.94, i6:  1372474.69, spot: 0.2909, supply:  1787711.69 },
+  { step: 19000, phase: "withdraw@9000",   usdt:  162562.45, i6:  3378415.27, spot: 0.0481, supply:  3793652.27 },
+  // post-withdraw display-clamped: actual measured values are
+  //   USDT  = 2.6e-8 (= 26,134,796,053 wei),
+  //   i6 LP = 1.56e15 i6,
+  //   spot  = 0,
+  //   supply= 2.16e19 i6.
+  { step: 19999, phase: "post-withdraw",   usdt:       0.01, i6: 20000000.00, spot: 0.0001, supply: 50000000.00 },
 ];
 
-// 10 death-spiral waves on the LIVE-seeded pool.
+const WORST_FINAL_REAL = {
+  usdt:   2.6e-8,
+  i6:     1.56e15,
+  spot:   0.0,
+  supply: 2.16e19,
+};
+
+// 10 death-spiral waves on the LIVE-seeded pool (actual measured values).
+// Wave 10 i6 mint is enormous (2.16e19); chart uses log scale so it remains
+// readable. The `minted` figure shown here is the real measurement.
 const WAVES = [
-  { wave:  1, minted:       8067.27, pulled:  27498.48, spot: 16.9303 },
-  { wave:  2, minted:      17175.87, pulled:  55774.56, spot: 15.2202 },
-  { wave:  3, minted:      30471.82, pulled:  90585.54, spot: 12.6385 },
-  { wave:  4, minted:      51815.04, pulled: 133441.66, spot:  9.2721 },
-  { wave:  5, minted:      90563.29, pulled: 186206.35, spot:  5.4455 },
-  { wave:  6, minted:     159904.48, pulled: 233706.91, spot:  2.0768 },
-  { wave:  7, minted:     257885.25, pulled: 236844.61, spot:  0.2893 },
-  { wave:  8, minted:     476294.24, pulled: 236822.72, spot:  0.0084 },
-  { wave:  9, minted:    1175059.09, pulled: 236776.12, spot:  0.0001 },
-  { wave: 10, minted:    7601268.43, pulled: 236594.79, spot:  0.0000 },
+  { wave:  1, minted:        5980.85,         pulled:  27498.43, spot: 4.5300 },
+  { wave:  2, minted:       12797.54,         pulled:  55774.37, spot: 4.2140 },
+  { wave:  3, minted:       22920.32,         pulled:  90584.98, spot: 3.7252 },
+  { wave:  4, minted:       39621.60,         pulled: 133440.25, spot: 3.0601 },
+  { wave:  5, minted:       71277.83,         pulled: 186202.86, spot: 2.2413 },
+  { wave:  6, minted:      132548.15,         pulled: 233699.09, spot: 1.3939 },
+  { wave:  7, minted:      233820.90,         pulled: 236831.30, spot: 0.7397 },
+  { wave:  8, minted:      511469.30,         pulled: 236796.01, spot: 0.2912 },
+  { wave:  9, minted:     2001834.60,         pulled: 236693.69, spot: 0.0483 },
+  { wave: 10, minted: 21591128208491520000.0, pulled: 162799.02, spot: 0.000001 },
 ];
 
 // Wave snapshot spots come from the per-wave end-of-wave snapshot.

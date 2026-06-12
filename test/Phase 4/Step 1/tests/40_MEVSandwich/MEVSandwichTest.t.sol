@@ -40,7 +40,7 @@ contract MEVSandwichTest is BaseForkSetup {
 
     function test_MEV_cross_block_sandwich_front_run_reduces_mint() public {
         // Block N (the "frontrun" block): the MEV bot invests a large amount
-        // that pushes spot up.
+        // that pushes spot up.                                                    
         _advanceTime(1 hours + 1);
         _investFresh(mev, 20_000 * WAD, freshOrigin); // max allowed buy = MAX_INVESTMENT
 

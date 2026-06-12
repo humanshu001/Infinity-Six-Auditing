@@ -361,10 +361,10 @@ contract StressSimulationTest is Test {
     // =================================================================
     function test_BEST_case_deep_liquidity_stable_run() public {
         emit log("==========================================================");
-        emit log("BEST CASE: 7.56M USDT / 6M i6 seed (10x live), 10k users");
+        emit log("BEST CASE: 5.9532M USDT / 4.15237M i6 seed (10x live), 10k users");
         emit log("==========================================================");
 
-        _deployStressStack(7_560_000 * WAD, 6_000_000 * WAD);
+        _deployStressStack(5_953_200 * WAD, 4_152_370 * WAD);
         _logPoolState("seed");
         _emitCsv("BEST", 0);
 
@@ -390,10 +390,10 @@ contract StressSimulationTest is Test {
     // =================================================================
     function test_AVERAGE_case_mid_liquidity_general_scenario() public {
         emit log("==========================================================");
-        emit log("AVERAGE CASE: 2.268M USDT / 1.8M i6 seed (3x live), 10k users");
+        emit log("AVERAGE CASE: 1.78596M USDT / 1.24571M i6 seed (3x live), 10k users");
         emit log("==========================================================");
 
-        _deployStressStack(2_268_000 * WAD, 1_800_000 * WAD);
+        _deployStressStack(1_785_960 * WAD, 1_245_711 * WAD);
         _logPoolState("seed");
         _emitCsv("AVG", 0);
 
@@ -413,10 +413,10 @@ contract StressSimulationTest is Test {
 
     function test_WORST_case_thin_liquidity_stress() public {
         emit log("==========================================================");
-        emit log("WORST CASE: 756k USDT / 600k i6 seed (LIVE), 10k users");
+        emit log("WORST CASE: 595,320 USDT / 415,237 i6 seed (LIVE), 10k users");
         emit log("==========================================================");
 
-        _deployStressStack(756_000 * WAD, 600_000 * WAD);
+        _deployStressStack(595_320 * WAD, 415_237 * WAD);
         _logPoolState("seed");
         _emitCsv("WORST", 0);
 
@@ -439,10 +439,10 @@ contract StressSimulationTest is Test {
     // =================================================================
     function test_DEATH_SPIRAL_progressive_drain() public {
         emit log("==========================================================");
-        emit log("DEATH SPIRAL: 756k/600k LIVE seed, 10 batched withdraw waves");
+        emit log("DEATH SPIRAL: 595,320 USDT / 415,237 i6 LIVE seed, 10 waves");
         emit log("==========================================================");
 
-        _deployStressStack(756_000 * WAD, 600_000 * WAD);
+        _deployStressStack(595_320 * WAD, 415_237 * WAD);
         _logPoolState("seed");
         _emitCsv("DEATH", 0);
 
