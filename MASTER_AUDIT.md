@@ -281,6 +281,58 @@ These categories overlap several findings already confirmed (28, 29, 30, 35). Ru
 
 ---
 
+---
+
+## Owner Renouncement and DEX Router Fixity
+
+**Question:** After renouncing ownership, will the DEX router address remain fixed, or will it cause any problems?
+
+1. **Ownable vs DAO Multisig Controller:** Both `InfinitySixToken` and `InfinitySixSystem` inherit OpenZeppelin's `Ownable` and assign ownership to the deployer. However, **none** of the administrative setter functions in either contract use the `onlyOwner` modifier.
+2. **Access Control is Governed by DAO:** The functions that update the DEX router (`setDexRouter`), liquidity pair (`setLiquidityPair`), and other critical system parameters are guarded by the `DAOMultisigController` address using the `DAOMultiSignRequired` (system) and `onlyDAO` (token) modifiers.
+3. **Router Will NOT Remain Fixed by Renouncement Alone:** Renouncing ownership (`renounceOwnership()`) only sets the OpenZeppelin `owner()` role to `0x0`. It does **not** reset or change the `DAOMultisigController` state variable.
+4. **Implications:**
+   - The DAO Multisig Controller will retain full authority to change the DEX router, pair, or system configurations at any time.
+   - If the goal of renouncing ownership is to guarantee to the community that the DEX router is fixed and immutable, this is **not** achieved by renouncing ownership alone. To achieve true immutability, the DAO Multisig Controller address would also need to be updated to `address(0)` or a null address.
+   - However, completely nullifying the DAO controller has a major downside: if PancakeSwap migrates to V3/V4, or if there is a liquidity migration, the system will be permanently locked to the old router, rendering it unusable.
+
+---
+
+## Deployed Contract Mitigations (MEV Sandwich / C-1 / DoS)
+
+Since the smart contract is already deployed, direct code modifications are impossible. The following off-chain and integration strategies must be implemented to prevent exploitation:
+
+1. **The `tx.origin` Blocker Constraint:** 
+   - Because `withdraw()` checks `tx.origin == msg.sender`, it is impossible to write a smart contract wrapper (middleware/proxy) to add slippage protection. The call must come directly from an EOA.
+2. **Frontend Slippage Protection & Warning System:**
+   - The user-facing dashboard/frontend must fetch the real-time PancakeSwap reserves for the i6/USDT pool before allowing a withdrawal.
+   - Compare the current spot price against a reference TWAP or external price oracle. If the spot price deviates by more than a safe threshold (e.g., 2%), disable the "Withdraw" button and display a warning: *"Liquidity pool reserves are currently imbalanced. Please try again in a few minutes to avoid slippage / sandwich attacks."*
+3. **MEV-Protection RPC (Private RPC Routing):**
+   - Instruct all users (via the frontend UI and documentation) to configure their wallet (Metamask, Rabby, etc.) to use an MEV-blocking RPC on BNB Chain (such as **MEV-Blocker** or **Flashbots Protect**).
+   - By routing transactions through a private mempool, MEV searchers cannot see the withdrawal transaction in the public mempool, completely preventing front-running and sandwiching.
+4. **Liquidity Stabilization (Team Action):**
+   - Maintain a deep liquidity pool. A larger reserve makes it significantly more expensive for MEV bots to manipulate the pool spot price, reducing the financial viability of sandwich attacks.
+
+---
+
+## Gas Stress Test Results (BSC Mainnet Fork)
+
+The gas profiling of the worst-case downline depth (1,000 levels), directs (200 directs), and packages (100 packages) was executed directly against the live mainnet system state on the BSC fork:
+
+- **Measured Gas Per Level:** ~30,768 gas units
+- **Measured Gas Per Direct:** ~3,068 gas units
+- **Measured Gas Per Package:** ~30,127 gas units
+- **BEST Case Invest (Depth=2, 0 directs):** ~1,032,155 gas (0.7% of BSC block limit)
+- **BEST Case Withdraw (1 package):** ~178,322 gas (0.1% of BSC block limit)
+- **WORST Case Invest (Depth=1000):** ~31,769,387 gas (22.6% of BSC block limit)
+- **WORST Case Invest (200 directs):** ~1,645,755 gas (1.1% of BSC block limit)
+- **WORST Case Withdraw (100 packages):** ~3,160,895 gas (2.2% of BSC block limit)
+- **ABSOLUTE WORST Invest (Depth=1000 + 200 directs):** ~32,382,987 gas (23.1% of BSC block limit)
+- **ABSOLUTE WORST Withdraw (100 pkgs, Depth=1000, 200 directs):** ~3,160,895 gas (2.2% of BSC block limit)
+
+*Verdict:* All scenarios are fully executable. The absolute worst-case investment requires ~32.3M gas, which is well within the 140M BSC block limit, but slightly exceeds standard public RPC node execution limits (30M). Average case scenarios are highly gas-efficient.
+
+---
+
 ## Pre-renounce checklist (do everything below, in order)
 
 If any step missed, the corresponding bug becomes permanent.
@@ -305,7 +357,7 @@ If any step missed, the corresponding bug becomes permanent.
 ## Bottom line
 
 Open after owner decisions:
-- **2 Critical** require code patches (C-1, C-2) — owner's reasoning that DAO-null mitigates them is wrong; these paths are not DAO-gated.
+- **2 Critical** require code patches (C-1, C-2) — owner's reasoning that DAO-null mitigates them is wrong; these paths are not DAO-gated. If already deployed, frontend slippage warnings and private RPC execution must be enforced.
 - **1 High** is conditional (H-1) — must verify rate is in a safe set, ideally patch to arithmetic so booster combinations also work.
 - **4 Medium** are cheap pre-renounce patches (M-1, M-3, M-5, MEV cross-block) — trivial to fix today, impossible to fix after renounce.
 - **1 Info** (L-5 no pause) is a permanent risk decision.

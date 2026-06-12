@@ -24,7 +24,7 @@ contract OracleTest is BaseForkSetup {
     IERC20 usdt = IERC20(USDT);
     InfinitySixSystem realSystem;
     InfinitySixToken realToken;
-    IPancakeRouter router;
+    IPancakeRouter pancakeRouter;
 
     address constant ORIGIN = 0xdF4fA7B59e9735f273B661153A03e64A6AE61cd1;
 
@@ -32,7 +32,7 @@ contract OracleTest is BaseForkSetup {
         super.setUp();
         realSystem = InfinitySixSystem(SYSTEM);
         realToken = InfinitySixToken(TOKEN);
-        router = IPancakeRouter(ROUTER);
+        pancakeRouter = IPancakeRouter(ROUTER);
 
         deal(address(usdt), attacker, 1000 * 1e18);
 
@@ -85,7 +85,7 @@ contract OracleTest is BaseForkSetup {
         path[0] = TOKEN;
         path[1] = USDT;
 
-        router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        pancakeRouter.swapExactTokensForTokensSupportingFeeOnTransferTokens(
             50000 * 1e18,
             0,
             path,

@@ -186,7 +186,7 @@ contract BaseForkSetup is Test {
 
     function setUp() public virtual {
         // Reproducibility: pin to BSC_BLOCK_NUMBER when set, else use latest.
-        string memory rpc = vm.envOr("BSC_RPC_URL", string("https://bsc-rpc.publicnode.com"));
+        string memory rpc = vm.envOr("BSC_RPC_URL", string("https://bnb-mainnet.g.alchemy.com/public"));
         uint256 pinnedBlock = vm.envOr("BSC_BLOCK_NUMBER", uint256(0));
         if (pinnedBlock != 0) {
             vm.createSelectFork(rpc, pinnedBlock);
@@ -288,10 +288,8 @@ contract BaseForkSetup is Test {
     function _advanceTime(uint256 secs) internal {
         currentTimestamp += secs;
         vm.warp(currentTimestamp);
-        // Advance block proportionally (1 block per 3s).
-        uint256 blocks = secs / 3;
-        if (blocks > 0) {
-            currentBlock += blocks;
+        if (secs > 0) {
+            currentBlock += 1;
             vm.roll(currentBlock);
         }
     }

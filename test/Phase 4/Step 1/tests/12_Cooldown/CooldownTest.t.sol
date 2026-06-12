@@ -4,10 +4,10 @@ pragma solidity ^0.8.34;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "i6systemcontract.sol";
-import "../BaseFork.t.sol";
+import "../BaseLocalSetup.t.sol";
 
-contract CooldownTest is BaseForkSetup {
-    IERC20 usdt = IERC20(USDT);
+contract CooldownTest is BaseLocalSetup {
+    IERC20 usdt;
     InfinitySixSystem realSystem;
     
     address constant ORIGIN = 0xdF4fA7B59e9735f273B661153A03e64A6AE61cd1;
@@ -17,6 +17,7 @@ contract CooldownTest is BaseForkSetup {
 
     function setUp() public override {
         super.setUp();
+        usdt = IERC20(USDT);
         realSystem = InfinitySixSystem(SYSTEM);
         
         // Setup initial deposits for attacker and attacker2

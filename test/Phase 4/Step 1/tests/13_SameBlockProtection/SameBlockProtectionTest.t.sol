@@ -4,10 +4,10 @@ pragma solidity ^0.8.34;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {InfinitySixSystem} from "i6systemcontract.sol";
 import {InfinitySixToken} from "i6token.sol";
-import "../BaseFork.t.sol";
+import "../BaseLocalSetup.t.sol";
 
-contract SameBlockProtectionTest is BaseForkSetup {
-    IERC20 usdt = IERC20(USDT);
+contract SameBlockProtectionTest is BaseLocalSetup {
+    IERC20 usdt;
     InfinitySixSystem realSystem;
     InfinitySixToken realToken;
 
@@ -19,6 +19,7 @@ contract SameBlockProtectionTest is BaseForkSetup {
 
     function setUp() public override {
         super.setUp();
+        usdt = IERC20(USDT);
         realSystem = InfinitySixSystem(SYSTEM);
         realToken = InfinitySixToken(TOKEN);
 

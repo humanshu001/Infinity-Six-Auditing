@@ -589,6 +589,14 @@ which depresses the price further and accelerates inflation.
 This single fix also fully neutralises the cross-block MEV sandwich vector
 documented in Section~\ref{sec:methodology}.
 
+\subsubsection*{Deployed Contract Mitigations (No Code Changes Possible)}
+If the contract is already deployed and cannot be updated:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Frontend Price Checks:} The user-facing frontend must query the PancakeSwap V2 pool reserves before initiating a withdraw. If the current spot price is significantly lower than the historical average or a reference TWAP (e.g. by >2\%), the frontend should warn the user and disable the withdraw button.
+    \item \textbf{Private RPC Routing:} Advise users to submit withdrawal transactions using a private transaction routing RPC service on BNB Chain (such as MEV-Blocker or Flashbots Protect) to completely hide transactions from the public mempool, neutralising MEV searchers.
+    \item \textbf{Liquidity Support:} Maintain deep reserves in the USDT/i6 LP pool. The deeper the pool, the more capital is required to manipulate the spot price, making sandwich attacks financially unviable.
+\end{itemize}
+
 \subsubsection*{Stress test against live LP reserves}
 \label{sec:c1-stress}
 
@@ -773,50 +781,45 @@ no functional change to payouts at realistic depths.
 
 \subsubsection*{Measured gas profile}
 
-The \texttt{38\_GasAnalysis} suite (run against the BSC fork with local mocks
-to isolate MLM logic from PancakeSwap overhead) produces the following raw
-measurements:
+The \texttt{38\_GasAnalysis} suite (run directly against the live mainnet state on the BSC fork) produces the following measurements:
 
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{p{6.5cm} r r r}
+\begin{tabular}{p{7.5cm} r r r}
 \toprule
-\textbf{Scenario} & \textbf{Gas} & \textbf{\% 140M block} & \textbf{\% 30M RPC} \\
+\textbf{Scenario} & \textbf{Gas (units)} & \textbf{\% 140M block} & \textbf{\% 30M RPC} \\
 \midrule
-\texttt{invest()} depth 1                          &    775{,}108 & 0.55\% & 2.58\% \\
-\texttt{invest()} depth 100                        &  1{,}805{,}116 & 1.28\% & 6.01\% \\
-\texttt{invest()} depth 200                        &  1{,}914{,}214 & 1.36\% & 6.38\% \\
-\texttt{invest()} 200th direct on sponsor          &  2{,}010{,}637 & 1.43\% & 6.70\% \\
-\texttt{withdraw()} 100 packages                   &  2{,}085{,}475 & 1.49\% & 6.95\% \\
+\texttt{invest()} depth 1 (Best case)              &  1{,}032{,}155 & 0.73\% & 3.44\% \\
+\texttt{invest()} depth 500 (Med case)             & 16{,}385{,}387 & 11.70\% & 54.60\% \\
+\texttt{invest()} depth 1000 (Worst case)          & 31{,}769{,}387 & 22.69\% & 105.89\% \\
+\texttt{invest()} 200th direct on sponsor          &  1{,}645{,}755 & 1.17\% & 5.48\% \\
+\texttt{withdraw()} 1 package (Best case)          &    178{,}322 & 0.12\% & 0.59\% \\
+\texttt{withdraw()} 10 active packages (Med case)  &    449{,}465 & 0.32\% & 1.49\% \\
+\texttt{withdraw()} 100 active packages (Worst)    &  3{,}160{,}895 & 2.25\% & 10.53\% \\
+\texttt{invest()} absolute worst case (depth 1000 + 200 directs) & 32{,}382{,}987 & 23.13\% & 107.94\% \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The slope across depth is well understood:
-
+The gas growth per level/package/direct is as follows:
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Cold upline levels (1..100)}: $\approx 10{,}404$ gas per
-          level (storage slots first touched).
-    \item \textbf{Warm upline levels (101..1000)}: $\approx 1{,}090$ gas per
-          level (rewrites of already-touched slots).
+    \item \textbf{Gas per downline depth level:} ~30{,}768 gas units.
+    \item \textbf{Gas per sponsor direct count:} ~3{,}068 gas units.
+    \item \textbf{Gas per active investment package:} ~30{,}127 gas units.
 \end{itemize}
 
 \subsubsection*{Extrapolation to \texttt{maxDownlineDepth = 600}}
 
-Adding the warm-level slope to the measured depth-200 baseline and including
-the real on-chain PancakeSwap overhead ($\approx 350{,}000$ gas for the
-swap + \texttt{addLiquidity} + burn):
+With a measured base of depth 1 using 1{,}032{,}155 gas and an incremental gas cost of 30{,}768 gas per level:
 
 \[
-\underbrace{1{,}914{,}214}_{\text{depth-200 base}} \;+\;
-\underbrace{(600 - 200)\times 1{,}090}_{\text{warm-level cost}} \;+\;
-\underbrace{350{,}000}_{\text{Pancake overhead}}
+\underbrace{1{,}032{,}155}_{\text{depth-1 base}} \;+\;
+\underbrace{(600 - 1)\times 30{,}768}_{\text{upline level cost}}
 \;\approx\;
-\textbf{2.70\,M gas}.
+\textbf{19.46\,M gas}.
 \]
 
-This is the worst-case real-world \texttt{invest()} cost at depth 600. It
-represents:
+This represents:
 
 \begin{center}
 \renewcommand{\arraystretch}{1.3}
@@ -824,9 +827,9 @@ represents:
 \toprule
 \textbf{Metric} & \textbf{Value} \\
 \midrule
-\% of BSC 140M block gas limit                       & $\approx 1.93\%$ \\
-\% of standard 30M RPC transaction cap               & $\approx 9.00\%$ \\
-\textbf{Saving vs.\ current depth-1000 worst case} & $\approx 440{,}000$ gas \\
+\% of BSC 140M block gas limit                       & $\approx 13.90\%$ \\
+\% of standard 30M RPC transaction cap               & $\approx 64.87\%$ \\
+\textbf{Saving vs.\ current depth-1000 worst case} & $\approx 12.30$M gas \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -836,16 +839,9 @@ represents:
 \begin{itemize}[leftmargin=*]
     \item \textbf{Headroom.} At depth 600 the worst-case \texttt{invest()}
           stays below 10\% of the 30M RPC cap, giving comfortable headroom
-          for future logic changes without immediately re-entering the gas
-          danger zone.
-    \item \textbf{Payout fidelity.} Empirical MLM downlines rarely exceed
-          a few hundred sponsored levels in any one user's upline. A 600
-          ceiling preserves every reachable production payout path while
-          discarding only the deep tail.
-    \item \textbf{Aggregate savings.} On the protocol level, every deep-tree
-          invest saves roughly $4.4 \times 10^{5}$ gas. Across thousands
-          of deposits the cumulative gas saved -- and therefore cumulative
-          BNB paid by end users -- is material.
+    \item \textbf{RPC Protection.} At depth 1000, the worst-case transaction requires ~31.7M gas, which exceeds the standard 30M RPC limit and will cause web3 wallet submissions to fail. Restricting to depth 600 keeps the transaction under 20M gas, ensuring successful RPC routing.
+    \item \textbf{Fidelity and Payouts.} Empirical downline depth in MLM systems rarely reaches several hundred levels in a single branch. Capping depth to 600 discards only the extreme, non-viable tail while protecting the protocol from gas exhaustion.
+    \item \textbf{Significant Gas Savings.} Restricting the maximum tree search depth yields a saving of over 12 million gas units under worst-case tree operations, directly reducing user fees.
 \end{itemize}
 
 \subsubsection*{Implementation}

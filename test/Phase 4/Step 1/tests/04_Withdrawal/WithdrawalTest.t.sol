@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.34;
 
-import "../BaseFork.t.sol";
+import "../BaseLocalSetup.t.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "i6systemcontract.sol";
 
-contract WithdrawalTest is BaseForkSetup {
-    IERC20 usdt = IERC20(USDT);
+contract WithdrawalTest is BaseLocalSetup {
+    IERC20 usdt;
     InfinitySixSystem realSystem;
     address constant ORIGIN = 0xdF4fA7B59e9735f273B661153A03e64A6AE61cd1;
 
     function setUp() public override {
         super.setUp();
+        usdt = IERC20(USDT);
         realSystem = InfinitySixSystem(SYSTEM);
         
         deal(address(usdt), attacker, 1000 * 1e18);
