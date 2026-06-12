@@ -289,11 +289,12 @@ These categories overlap several findings already confirmed (28, 29, 30, 35). Ru
 
 1. **Ownable vs DAO Multisig Controller:** Both `InfinitySixToken` and `InfinitySixSystem` inherit OpenZeppelin's `Ownable` and assign ownership to the deployer. However, **none** of the administrative setter functions in either contract use the `onlyOwner` modifier.
 2. **Access Control is Governed by DAO:** The functions that update the DEX router (`setDexRouter`), liquidity pair (`setLiquidityPair`), and other critical system parameters are guarded by the `DAOMultisigController` address using the `DAOMultiSignRequired` (system) and `onlyDAO` (token) modifiers.
-3. **Router Will NOT Remain Fixed by Renouncement Alone:** Renouncing ownership (`renounceOwnership()`) only sets the OpenZeppelin `owner()` role to `0x0`. It does **not** reset or change the `DAOMultisigController` state variable.
-4. **Implications:**
-   - The DAO Multisig Controller will retain full authority to change the DEX router, pair, or system configurations at any time.
-   - If the goal of renouncing ownership is to guarantee to the community that the DEX router is fixed and immutable, this is **not** achieved by renouncing ownership alone. To achieve true immutability, the DAO Multisig Controller address would also need to be updated to `address(0)` or a null address.
-   - However, completely nullifying the DAO controller has a major downside: if PancakeSwap migrates to V3/V4, or if there is a liquidity migration, the system will be permanently locked to the old router, rendering it unusable.
+3. **Setting DAO to a Dead Address (Renouncement):** If the DAO multisig controller is set to a dead address (e.g. `0x0` or `0x000000000000000000000000000000000000dEaD`), the DEX router address will indeed remain fixed and immutable forever. 
+4. **Bricking and Migration Risks:**
+   - **Protocol Bricking Risk:** If PancakeSwap migrates to a new router/factory version (e.g., V3/V4), or if the underlying USDT/i6 liquidity pool needs to be recreated/migrated, the system contract will remain permanently locked to the current router. Any function attempting to interact with the router (like `invest()`'s swap and addLiquidity path) will fail, effectively bricking the entire system.
+   - **Parameters Frozen Forever:** All system configurations—including `MIN_ROI_PERC` (ROI rate), `ROI_MAX_WITHDRAWAL` (withdrawal limits), `uniswapPair` (spot price oracle source), `maxDownlineDepth` (search tree depth), slippage tolerances, and token whitelists—will be unchangeable.
+   - **Compromise Lock:** If any of the hardcoded payout wallets (`GEN_W1` to `GEN_W7`) are compromised or lost, they can never be rotated or whitelisted.
+   - **Recommendation:** Rather than setting the DAO address to a dead address, use a multi-signature wallet (e.g., Gnosis Safe) with trusted signers/timelocks as the `DAOMultisigController`. This ensures security while retaining the ability to perform emergency migrations or parameter updates.
 
 ---
 

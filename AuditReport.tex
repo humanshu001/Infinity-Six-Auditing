@@ -1243,9 +1243,14 @@ multisig and the system contract itself.
           no second minter exists.
 \end{itemize}
 
-The renouncement is structural (the \texttt{owner} slot is the zero
-address) rather than merely behavioural, which is the correct property for
-a renounced ERC20 deployment.
+\subsubsection*{DAO Controller Nullification / Dead Address Update}
+If the DAO Multisig Controller is set to a dead or null address:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Router Fixity:} The DEX router configuration becomes completely fixed and immutable forever.
+    \item \textbf{System Parameters Locked:} All other parameters (ROI rate, maximum downline depth, withdrawal limits, spot price source pair, and token whitelists) are also locked permanently.
+    \item \textbf{Protocol Bricking Risk:} If PancakeSwap migrates its router or liquidity pools, the system contract cannot be updated to point to the new interface. Any functions interacting with the old router (such as \texttt{invest()} performing swaps and adding liquidity) will fail permanently, bricking the MLM cycle.
+    \item \textbf{Recommendation:} Keep the DAO Controller pointing to a secure multi-signature wallet (e.g. Gnosis Safe) with a timelock rather than a dead address to allow necessary migrations while maintaining security.
+\end{itemize}
 
 \subsection{Hard configuration boundaries respected}
 
