@@ -1,0 +1,13 @@
+# Governance Attack Audit Results
+
+### 1. Malicious Router Hijacking / Front-Running
+* Code location: `setDexRouter`
+* Impact: The contract allows the DAO multisig controller to update the router address on the fly. If the private key of the controller is compromised, an attacker can set `dexRouter` to a malicious contract that steals investor deposits during standard `invest()` calls, draining protocol capital completely.
+* Verification: Verified that updating the router to a malicious contract successfully redirects the swap portion (60% of investor USDT deposits) directly to the attacker.
+
+---
+
+### 2. Controller Privilege Takeover
+* Code location: `updateDAOMultisignController`
+* Impact: The protocol uses a single account address variable `DAOMultisigController` to represent the multi-sig authority. A compromised controller can transfer ownership to a malicious address, locking the original owner out and allowing the attacker to change critical variables like `MIN_INVESTMENT`, ROI values, or rescue assets.
+* Verification: Verified that updating the controller grants the new address full administrative power while stripping previous authorizations.

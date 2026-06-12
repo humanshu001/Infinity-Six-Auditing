@@ -1,0 +1,10 @@
+# Minting Attacks results
+
+Summary of implemented tests and expected outcomes:
+
+- System contract can mint: expect success when called by the configured system address.
+- Minting `type(uint256).max`: expect revert (overflow / arithmetic guard).
+- Minting to zero address: expect revert (ERC20 mint prevents zero address).
+- Previous system cannot mint after DAO updates system contract: expect revert.
+
+Append per-run pass/fail output here after executing the test suite on the fork.

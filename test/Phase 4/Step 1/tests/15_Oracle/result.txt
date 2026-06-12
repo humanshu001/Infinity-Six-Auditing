@@ -1,0 +1,8 @@
+# Oracle Manipulation Simulation Results
+
+The system contract reads the spot price of the token from the PancakeSwap pool. Three security test scenarios were executed:
+1. Spot Price Calculation: Confirmed the contract successfully reads the token spot price from the liquidity pool reserves.
+2. Manipulation via Direct Transfer: Evaluated price changes when sending tokens directly to the pool pair and syncing. The spot price decreases as the pool's token reserves inflate.
+3. Manipulation via Swap: Evaluated price changes when executing a token sale swap on PancakeSwap. The spot price decreases as reserves shift.
+
+All 3 test cases passed. While pool reserves can be skewed to manipulate the spot price, same-block protections and withdrawal cooldowns prevent attackers from exploiting these price swings inside a single transaction or block.

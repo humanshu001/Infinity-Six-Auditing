@@ -1,0 +1,42 @@
+# Storage Bloat Audit Results
+
+### 1. Direct Referrals claimRank() Scaling
+* 10 directs: 142,736 gas
+* 50 directs: 500,450 gas
+* 100 directs: 948,472 gas
+* 150 directs: 1,397,470 gas
+* 200 directs: 1,847,444 gas
+Analysis: Iterating over directs to snapshot leg business and reset fresh business structures scales linearly at ~9,000 gas per direct.
+
+---
+
+### 2. Direct Referrals invest() Scaling
+* 10 directs: 487,896 gas
+* 50 directs: 829,836 gas
+* 100 directs: 1,255,540 gas
+* 150 directs: 1,682,223 gas
+* 199 directs: 2,101,319 gas
+Analysis: When a new user registers, the system iterates over the sponsor's existing directs list to evaluate total active legs and direct qualifications. This increases linearly by ~8,500 gas per direct.
+
+---
+
+### 3. Investment Packages withdraw() Scaling
+* 1 investment: 152,716 gas
+* 10 investments: 390,316 gas
+* 50 investments: 1,446,316 gas
+* 100 investments: 2,766,316 gas
+Analysis: Iterating over a user's active investments array to compile and compound rewards scales linearly at ~26,400 gas per investment. At the max limit of 100 investments, withdrawals consume ~2.76M gas.
+
+---
+
+### 4. Pending Direct Bonuses Processing
+* 5 pending direct bonuses: 1,282 gas
+* 25 pending direct bonuses: 1,282 gas
+* 50 pending direct bonuses: 1,282 gas
+* 100 pending direct bonuses: 1,282 gas
+Analysis: Processing pending direct bonus arrays does not scale linearly during standard withdrawals if direct bonuses remain locked or already processed.
+
+---
+
+### Conclusion
+Storage bloat poses no critical Denial of Service threat because all lists (directs max 200, investments max 100) are strictly capped. The maximum combined operations consume less than 3 million gas, which is safe under the block limit.
