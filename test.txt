@@ -1,14 +1,13 @@
-Owner will be renounced and DAO will be sent to null address after this auditing. RescueDrain is intentional, 
+I have add some more more test folders and test files run them also and analyze there results and give result.txt file of all and before all of this we have to test 38_GasAnalysis again with bsc mainnet fork and we need real blockchain values for it and do not give test based on mock as the one you have given is based on mock and I do not need them and based on it and other tests results add more things to MASTER_AUDIT file
+also tell me whether after renouncing owner the dex router will remain fix or not will it give any problem or not
 
-Every calculation is based on usdt only token price it checked at the time of withdrawal, so if price drops then no problem user will get tokens according to his investment and if price decreases he will get more tokens as per his investment. So he will sell them all at that price and get USDT back. So no problem is there. No problem with this no max supply part. If owner is renounced and DAO is sent to null address then there will not be any person who can change the address of the dex router so it will not go to any scam address. So no problem is there. 
+After all tests and analysis add new GAS result in AuditReport.tex file and mention the things which are
 
-Explain me number 28 in more detail
+DOS
+MEV Sandwich Attack (THIS SMART CONTRACT IS ALREADY DEPLOYED I CAN NOT MAKE ANY CHANGES IN THIS CURRENT SMART CONTRACT BUT I CAN CREATE A SEPARATE SMART CONTRACT OR BOT OR ANY PREVENTION FOR IT SO GIVE ME MITIGATION OF IT TO PREVENT THIS)
+C-1 in MASTER_AUDIT
 
-BoosterBugs is intentional as booster will not be applied to new package 
+In my opinion these three are most critical things and other things are ignorable if you think there are some more critical things add them also 
 
-30 is also not a problem we are intentionally not decreasing this values as we are counting the whole business from day one to till date
 
-When we will put DAO on null address then this number 31 will not occur 
-
-32 is also good as per the owner prespective so remove this one also
-
+LAST QUESTION: AFTER 180 DAYS IF THE BUYING WILL BE ENABLED AUTOMATICALLY OR NOT? AND AT WHAT VALUE OF maxDownlineDepth WILL THE SYSTEM REMAIN SAFE AND GAS SAFE?
